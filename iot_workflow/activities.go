@@ -1,4 +1,4 @@
-package iotworkflow
+package iot_workflow
 
 import (
 	"context"
@@ -48,4 +48,19 @@ func (a *Activities) DownloadFileActivity(ctx context.Context, fileURL string) (
 	}
 
 	return file.Name(), nil
+}
+
+// Encode the downloaded file into the expected output
+func (a *Activities) EncodeFileActivity(ctx context.Context, fileName string) (string, error) {
+	return "", nil
+}
+
+// Do cleanup activity of the original downloaded file and the encoded file
+func (a *Activities) DeleteFileActivity(ctx context.Context, fileName string) error {
+	return nil
+}
+
+// Upload the encoded file to an API
+func (a *Activities) UploadFileActivity(ctx context.Context, fileName string) error {
+	return nil
 }

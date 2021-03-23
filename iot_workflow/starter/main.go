@@ -5,9 +5,9 @@ import (
 	"log"
 
 	"github.com/pborman/uuid"
-	"go.temporal.io/sdk/client"
-
 	"github.com/nirpadma/temporal-workflows/iot_workflow"
+
+	"go.temporal.io/sdk/client"
 )
 
 func main() {
