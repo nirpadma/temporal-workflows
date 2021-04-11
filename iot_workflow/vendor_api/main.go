@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -8,6 +9,16 @@ import (
 	"net/http"
 	"os"
 )
+
+const (
+	Success = "success"
+	Pending = "pending"
+)
+
+// MediaURLs is the struct for the json response of /mediaurls endpoint
+type MediaURLs struct {
+	Links []string `json:"urls"`
+}
 
 // ValidateConfigPath ..
 func ValidateConfigPath(configPath string) error {
@@ -38,10 +49,23 @@ func parseFlags() (string, error) {
 func (config VendorConfig) mediaStatusHandler(w http.ResponseWriter, _ *http.Request) {
 	successRatioThreshold := config.Server.Options.MediaSuccessRatio
 	if rand.Float64() <= successRatioThreshold {
-		fmt.Fprintf(w, "success")
+		fmt.Fprintf(w, Success)
 	} else {
-		fmt.Fprintf(w, "pending")
+		fmt.Fprintf(w, Pending)
 	}
+}
+
+func (config VendorConfig) mediaUrls(w http.ResponseWriter, _ *http.Request) {
+
+	mediaURLs := MediaURLs{config.Server.Options.MediaURLs}
+	js, err := json.Marshal(mediaURLs)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(js)
 }
 
 func (config VendorConfig) firstMediaLinkHandler(w http.ResponseWriter, _ *http.Request) {
@@ -55,6 +79,7 @@ func (config VendorConfig) secondMediaLinkHandler(w http.ResponseWriter, _ *http
 func (config VendorConfig) RunServer() {
 
 	http.HandleFunc("/mediastatus", config.mediaStatusHandler)
+	http.HandleFunc("/mediaurls", config.mediaUrls)
 	http.HandleFunc("/firstmedialink", config.firstMediaLinkHandler)
 	http.HandleFunc("/secondmedialink", config.secondMediaLinkHandler)
 	portAddress := fmt.Sprintf(":%s", config.Server.Port)

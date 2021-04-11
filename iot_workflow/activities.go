@@ -2,6 +2,7 @@ package iot_workflow
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -10,12 +11,57 @@ import (
 	"go.temporal.io/sdk/activity"
 )
 
-type Activities struct {
+const vendorAPImediaStatus = "http://localhost:8220/mediastatus"
+const vendorAPImediaURLs = "http://localhost:8220/mediaurls"
+
+// CheckMediaStatusActivity ...
+func CheckMediaStatusActivity(ctx context.Context) (bool, error) {
+	logger := activity.GetLogger(ctx)
+	resp, err := http.Get(vendorAPImediaStatus)
+	if err != nil {
+		logger.Error("http err calling vendor API for status", "endpoint", vendorAPImediaStatus)
+		return false, err
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		logger.Error("ioutil err reading mediastatus response", "endpoint", vendorAPImediaStatus)
+		return false, err
+	}
+	status := string(bodyBytes)
+	if status == "success" {
+		return true, nil
+	}
+	return false, nil
+}
+
+// GetMediaURLsActivity ...
+func GetMediaURLsActivity(ctx context.Context) ([]string, error) {
+	logger := activity.GetLogger(ctx)
+	resp, err := http.Get(vendorAPImediaURLs)
+	if err != nil {
+		logger.Error("http err calling vendor API for status", "endpoint", vendorAPImediaStatus)
+		return []string{}, err
+	}
+	defer resp.Body.Close()
+
+	// logger.Info("bodyBytes: ", "resp.Body", resp.Body)
+
+	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		logger.Error("ioutil err reading mediastatus response", "endpoint", vendorAPImediaStatus)
+		return []string{}, err
+	}
+	var urls MediaURLs
+	json.Unmarshal(bodyBytes, &urls)
+
+	return urls.Links, nil
 }
 
 // Create a temporary file and download the media file at the provided fileURL into the temp file
 // return the path to the temp file.
-func (a *Activities) DownloadFileActivity(ctx context.Context, fileURL string) (string, error) {
+func DownloadFileActivity(ctx context.Context, fileURL string) (string, error) {
 	logger := activity.GetLogger(ctx)
 	logger.Info("Downloading file...", "fileURL", fileURL)
 
@@ -51,16 +97,16 @@ func (a *Activities) DownloadFileActivity(ctx context.Context, fileURL string) (
 }
 
 // Encode the downloaded file into the expected output
-func (a *Activities) EncodeFileActivity(ctx context.Context, fileName string) (string, error) {
+func EncodeFileActivity(ctx context.Context, fileName string) (string, error) {
 	return "", nil
 }
 
-// Do cleanup activity of the original downloaded file and the encoded file
-func (a *Activities) DeleteFileActivity(ctx context.Context, fileName string) error {
+// Upload the encoded file to an API
+func UploadFileActivity(ctx context.Context, fileName string) error {
 	return nil
 }
 
-// Upload the encoded file to an API
-func (a *Activities) UploadFileActivity(ctx context.Context, fileName string) error {
+// Do cleanup activity of the specified file names
+func DeleteFilesActivity(ctx context.Context, fileNames []string) error {
 	return nil
 }
