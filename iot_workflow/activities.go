@@ -63,47 +63,8 @@ func GetMediaURLsActivity(ctx context.Context) ([]string, error) {
 	return urls.Links, nil
 }
 
-// Create a temporary file and download the media file at the provided fileURL into the temp file
-// return the path to the temp file.
-func DownloadFileActivity(ctx context.Context, fileURL string) (string, error) {
-	logger := activity.GetLogger(ctx)
-	logger.Info("Downloading file...", "fileURL", fileURL)
-
-	tmpFile, err := ioutil.TempFile("", "videoFile")
-	if err != nil {
-		logger.Error(fmt.Sprintf("Err creating temp file %s", err.Error()))
-		return "", err
-	}
-
-	filePath := tmpFile.Name()
-
-	file, err := os.Create(filePath)
-	if err != nil {
-		logger.Error("Err creating file to save to", "filePath", filePath)
-		return "", err
-	}
-	defer file.Close()
-
-	resp, err := http.Get(fileURL)
-	if err != nil {
-		logger.Error("http error downloading file", "fileURL", fileURL)
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	_, err = io.Copy(file, resp.Body)
-	if err != nil {
-		logger.Error("Error copying downloaded file to filepath")
-		return "", err
-	}
-
-	logger.Info(fmt.Sprintf("saved file with name %s", file.Name()))
-
-	return file.Name(), nil
-}
-
-// Create a temporary file and download the media file at the provided fileURL into the temp file
-// return the path to the temp file.
+// Create a temporary files and download the media files at the provided fileURL into the temp files
+// return an array containing paths to the temp files.
 func DownloadFilesActivity(ctx context.Context, fileURLs []string) ([]string, error) {
 	logger := activity.GetLogger(ctx)
 	downloadedFiles := []string{}
@@ -154,7 +115,7 @@ func DownloadFilesActivity(ctx context.Context, fileURLs []string) ([]string, er
 	return downloadedFiles, nil
 }
 
-// Encode the downloaded file into the expected output
+// EncodeFileActivity encodes the downloaded file into the expected output
 func EncodeFileActivity(ctx context.Context, fileName string) (string, error) {
 	logger := activity.GetLogger(ctx)
 	tmpFile, err := ioutil.TempFile("", "encodedFile")
