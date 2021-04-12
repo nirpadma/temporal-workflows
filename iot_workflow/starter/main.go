@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	"github.com/nirpadma/temporal-workflows/iot_workflow"
@@ -24,8 +25,9 @@ func main() {
 		ID:        "iotprocessing_" + fileID,
 		TaskQueue: "iotprocessing",
 	}
+	outputFileName := fmt.Sprintf("mergedFile_%s.mp4", fileID)
 
-	we, err := c.ExecuteWorkflow(context.Background(), workflowOptions, iot_workflow.IOTWorkflow)
+	we, err := c.ExecuteWorkflow(context.Background(), workflowOptions, iot_workflow.IOTWorkflow, outputFileName)
 	if err != nil {
 		log.Fatalln("Unable to execute workflow", err)
 	}

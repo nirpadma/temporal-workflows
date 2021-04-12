@@ -12,10 +12,8 @@ type VendorConfig struct {
 		Host    string `yaml:"host"`
 		Port    string `yaml:"port"`
 		Options struct {
-			MediaSuccessRatio float64  `yaml:"media_success_ratio"`
+			MediaStatusSuccessRatio float64  `yaml:"media_success_ratio"`
 			MediaURLs         []string `yaml:"media_urls"`
-			FirstMediaURL     string   `yaml:"first_media_url"`
-			SecondMediaURL    string   `yaml:"second_media_url"`
 		} `yaml:"options"`
 	} `yaml:"server"`
 }

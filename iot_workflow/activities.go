@@ -9,7 +9,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"os/exec"
 
+	"github.com/xfrr/goffmpeg/transcoder"
 	"go.temporal.io/sdk/activity"
 )
 
@@ -82,8 +84,6 @@ func DownloadFileActivity(ctx context.Context, fileURL string) (string, error) {
 	}
 	defer file.Close()
 
-	logger.Info(fmt.Sprintf("created file with name %s", file.Name()))
-
 	resp, err := http.Get(fileURL)
 	if err != nil {
 		logger.Error("http error downloading file", "fileURL", fileURL)
@@ -97,20 +97,162 @@ func DownloadFileActivity(ctx context.Context, fileURL string) (string, error) {
 		return "", err
 	}
 
+	logger.Info(fmt.Sprintf("saved file with name %s", file.Name()))
+
 	return file.Name(), nil
+}
+
+// Create a temporary file and download the media file at the provided fileURL into the temp file
+// return the path to the temp file.
+func DownloadFilesActivity(ctx context.Context, fileURLs []string) ([]string, error) {
+	logger := activity.GetLogger(ctx)
+	downloadedFiles := []string{}
+	for _, fileURL := range fileURLs {
+
+		logger.Info("Downloading file...", "fileURL", fileURL)
+
+		tmpFile, err := ioutil.TempFile("", "videoFile")
+		if err != nil {
+			logger.Error(fmt.Sprintf("Err creating temp file %s", err.Error()))
+			return downloadedFiles, err
+		}
+
+		filePath := tmpFile.Name()
+
+		file, err := os.Create(filePath)
+		if err != nil {
+			logger.Error("Err creating file to save to", "filePath", filePath)
+			return downloadedFiles, err
+		}
+		defer file.Close()
+
+			logger.Info(fmt.Sprintf("created file with name %s", file.Name()))
+
+		// For potentially long running activites, record a heartbeat
+		activity.RecordHeartbeat(ctx, "")
+
+		resp, err := http.Get(fileURL)
+		if err != nil {
+			logger.Error("http error downloading file", "fileURL", fileURL)
+			return downloadedFiles, err
+		}
+		defer resp.Body.Close()
+
+		logger.Info(fmt.Sprintf("http.Get(fileURL) %s", file.Name()))
+
+		_, err = io.Copy(file, resp.Body)
+		if err != nil {
+			logger.Error("Error copying downloaded file to filepath")
+			return downloadedFiles, err
+		}
+		// For potentially long running activites, record a heartbeat
+		activity.RecordHeartbeat(ctx, "")
+
+		logger.Info(fmt.Sprintf("saved file with name %s", file.Name()))
+		downloadedFiles = append(downloadedFiles, file.Name())
+	}
+	return downloadedFiles, nil
 }
 
 // Encode the downloaded file into the expected output
 func EncodeFileActivity(ctx context.Context, fileName string) (string, error) {
-	return "", nil
+	logger := activity.GetLogger(ctx)
+	tmpFile, err := ioutil.TempFile("", "encodedFile")
+	if err != nil {
+		logger.Error(fmt.Sprintf("Err creating temp file %s", err.Error()))
+		return "", err
+	}
+	outputFilePath := fmt.Sprintf("%s.mp4", tmpFile.Name())
+
+	transcoder := new(transcoder.Transcoder)
+	err = transcoder.Initialize(fileName, outputFilePath)
+
+	if err != nil {
+		logger.Error(fmt.Sprintf("Err initializing ffmpeg transcoder %s", err.Error()))
+		return "", err
+	}
+	// Start transcoder with the `true` flag to show the progress
+	done := transcoder.Run(true)
+
+	progress := transcoder.Output()
+
+	// print out transcoding progress
+	for msg := range progress {
+		// For potentially long running activites, record a heartbeat
+		activity.RecordHeartbeat(ctx, "")
+		fmt.Println(msg)
+	}
+
+	err = <-done
+	if err != nil {
+		logger.Error(fmt.Sprintf("Err in transcoding %s", err.Error()))
+		return "", err
+	}
+
+	return outputFilePath, nil
 }
 
-// Upload the encoded file to an API
-func UploadFileActivity(ctx context.Context, fileName string) error {
+func writefileNamesToFile(path string, fileNames []string) error {
+	var file, err = os.OpenFile(path, os.O_RDWR, 0644)
+	if err != nil {
+		fmt.Println(err.Error())
+		return err
+	}
+	defer file.Close()
+
+	for _, f := range fileNames {
+		_, err = file.WriteString(fmt.Sprintf("file '%s'\n", f))
+		if err != nil {
+			fmt.Println(err.Error())
+			return err
+		}
+	}
+
+	err = file.Sync()
+	if err != nil {
+		fmt.Println(err.Error())
+		return err
+	}
 	return nil
 }
 
-// Do cleanup activity of the specified file names
-func DeleteFilesActivity(ctx context.Context, fileNames []string) error {
-	return nil
+func createTempFile(prefix string) (string, error) {
+	tmpFile, err := ioutil.TempFile("", prefix)
+	if err != nil {
+		return "", err
+	}
+	return tmpFile.Name(), nil
+}
+
+// MergeFilesActivity combines the media files into one file based on the ordering in the input array
+func MergeFilesActivity(ctx context.Context, fileNames []string, outputFileName string) (string, error) {
+	logger := activity.GetLogger(ctx)
+	filesToMerge, err := createTempFile("filesToMerge")
+	err = writefileNamesToFile(filesToMerge, fileNames)
+	if err != nil {
+		return "", err
+	}
+
+	//Use ffmpeg concatenate instructions from here: https://trac.ffmpeg.org/wiki/Concatenate
+	
+	ffMpegCommand := "ffmpeg"
+	arg0 := "-f"
+	arg1 := "concat"
+	arg2 := "-safe"
+	arg3 := "0"
+	arg4 := "-i"
+	arg5 := filesToMerge
+	arg6 := "-c"
+	arg7 := "copy"
+	arg8 := outputFileName
+
+	cmd := exec.Command(ffMpegCommand, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
+	stdout, err := cmd.Output()
+	if err != nil {
+		logger.Error("error executing command")
+		logger.Error(err.Error())
+		return "", err
+	}
+	logger.Info(string(stdout))
+	return outputFileName, nil
 }

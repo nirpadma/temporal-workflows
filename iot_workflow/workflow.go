@@ -12,10 +12,10 @@ const workflowMaxAttempts = 3
 
 // IOTWorkflow workflow definition
 // NOTE: The initial structure for this workflow was taken from https://github.com/temporalio/samples-go
-func IOTWorkflow(ctx workflow.Context) (err error) {
+func IOTWorkflow(ctx workflow.Context, outputFileName string) (err error) {
 	ao := workflow.ActivityOptions{
-		StartToCloseTimeout: time.Minute,
-		HeartbeatTimeout:    time.Second * 2,
+		StartToCloseTimeout: 3 * time.Minute,
+		HeartbeatTimeout:    3 * time.Minute,
 		RetryPolicy: &temporal.RetryPolicy{
 			InitialInterval: time.Second,
 			// retry every second. In real-world settings, it may be more apropriate to set an actual value
@@ -26,7 +26,7 @@ func IOTWorkflow(ctx workflow.Context) (err error) {
 	ctx = workflow.WithActivityOptions(ctx, ao)
 
 	for i := 1; i < workflowMaxAttempts; i++ {
-		err = processIOTWorkflow(ctx)
+		err = processIOTWorkflow(ctx, outputFileName)
 		if err == nil {
 			break
 		}
@@ -39,26 +39,23 @@ func IOTWorkflow(ctx workflow.Context) (err error) {
 	return err
 }
 
-func processIOTWorkflow(ctx workflow.Context) (err error) {
+func processIOTWorkflow(ctx workflow.Context, outputFileName string) (err error) {
 
 	ao := workflow.ActivityOptions{
 		ScheduleToStartTimeout: time.Minute,
-		StartToCloseTimeout:    2 * time.Minute,
-		HeartbeatTimeout:       time.Second * 10,
+		StartToCloseTimeout:    3 * time.Minute,
+		HeartbeatTimeout:       3 * time.Minute,
 	}
 	ctx1 := workflow.WithActivityOptions(ctx, ao)
 	logger := workflow.GetLogger(ctx)
 
 	logger.Info("starting CheckMediaStatusActivity")
 
-	var isMediaReadyToDownload bool
-	err = workflow.ExecuteActivity(ctx1, CheckMediaStatusActivity).Get(ctx1, &isMediaReadyToDownload)
+	err = workflow.ExecuteActivity(ctx1, CheckMediaStatusActivity).Get(ctx1, nil)
 	if err != nil {
 		logger.Error("CheckMediaStatusActivity failed", "Error", err)
 		return err
 	}
-
-	logger.Info("Media is ready to download", "isReady", isMediaReadyToDownload)
 
 	var mediaURLs []string
 	err = workflow.ExecuteActivity(ctx1, GetMediaURLsActivity).Get(ctx1, &mediaURLs)
@@ -67,12 +64,10 @@ func processIOTWorkflow(ctx workflow.Context) (err error) {
 		return err
 	}
 
-	logger.Info("mediaURLs: ", "mediaURLs", mediaURLs)
-
 	so := &workflow.SessionOptions{
-		CreationTimeout:  3 * time.Minute,
-		ExecutionTimeout: 3 * time.Minute,
-		HeartbeatTimeout: 3 * time.Minute,
+		CreationTimeout:  time.Minute,
+		ExecutionTimeout: 8 * time.Minute,
+		HeartbeatTimeout: 5 * time.Minute,
 	}
 	// Use the session context for the activities to schedule on the same host
 	sessionCtx, err := workflow.CreateSession(ctx, so)
@@ -82,39 +77,28 @@ func processIOTWorkflow(ctx workflow.Context) (err error) {
 	defer workflow.CompleteSession(sessionCtx)
 
 	downloadedfileNames := []string{}
-	for i, mediaFileURL := range mediaURLs {
-		logger.Info(fmt.Sprintf("i=%d", i))
-		logger.Info("downloading file", "mediaFileURL", mediaFileURL)
-		var downloadedFileName string
-		err = workflow.ExecuteActivity(sessionCtx, DownloadFileActivity, mediaFileURL).Get(sessionCtx, &downloadedFileName)
+	err = workflow.ExecuteActivity(sessionCtx, DownloadFilesActivity, mediaURLs).Get(sessionCtx, &downloadedfileNames)
+	if err != nil {
+		return err
+	}
+
+	encodedfileNames := []string{}
+	for _, downloadedFile := range downloadedfileNames {
+		logger.Info("encoding file", "file", downloadedFile)
+		var encodedFileName string
+		err = workflow.ExecuteActivity(sessionCtx, EncodeFileActivity, downloadedFile).Get(sessionCtx, &encodedFileName)
 		if err != nil {
 			return err
 		}
-		logger.Info(fmt.Sprintf("Downloaded the following file: %s", downloadedFileName))
-		downloadedfileNames = append(downloadedfileNames, downloadedFileName)
+		logger.Info(fmt.Sprintf("Encoded the following file: %s", encodedFileName))
+		encodedfileNames = append(encodedfileNames, encodedFileName)
 	}
 
-	// var encodedFilePath string
-	// err = workflow.ExecuteActivity(sessionCtx, EncodeFileActivity, downloadedName).Get(sessionCtx, &encodedFilePath)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// var uploadedFilePath string
-	// err = workflow.ExecuteActivity(sessionCtx, UploadFileActivity, downloadedName).Get(sessionCtx, &uploadedFilePath)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// var deleteSuccessful bool
-	// err = workflow.ExecuteActivity(sessionCtx, DeleteFilesActivity, []string{downloadedName, encodedFilePath}).Get(sessionCtx, &deleteSuccessful)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// if !deleteSuccessful {
-	// 	fmt.Println(fmt.Sprintf("Error deleting %s or %s", downloadedName, encodedFilePath))
-	// }
+	var mergedFile string
+	err = workflow.ExecuteActivity(sessionCtx, MergeFilesActivity, encodedfileNames, outputFileName).Get(sessionCtx, &mergedFile)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

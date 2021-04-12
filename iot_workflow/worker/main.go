@@ -28,7 +28,10 @@ func main() {
 	w.RegisterWorkflow(iot_workflow.IOTWorkflow)
 	w.RegisterActivity(iot_workflow.CheckMediaStatusActivity)
 	w.RegisterActivity(iot_workflow.GetMediaURLsActivity)
-	w.RegisterActivity(iot_workflow.DownloadFileActivity)	
+	w.RegisterActivity(iot_workflow.DownloadFileActivity)
+	w.RegisterActivity(iot_workflow.DownloadFilesActivity)
+	w.RegisterActivity(iot_workflow.EncodeFileActivity)
+	w.RegisterActivity(iot_workflow.MergeFilesActivity)
 
 	err = w.Run(worker.InterruptCh())
 	if err != nil {

@@ -47,7 +47,7 @@ func parseFlags() (string, error) {
 }
 
 func (config VendorConfig) mediaStatusHandler(w http.ResponseWriter, _ *http.Request) {
-	successRatioThreshold := config.Server.Options.MediaSuccessRatio
+	successRatioThreshold := config.Server.Options.MediaStatusSuccessRatio
 	if rand.Float64() <= successRatioThreshold {
 		fmt.Fprintf(w, Success)
 	} else {
@@ -68,20 +68,10 @@ func (config VendorConfig) mediaUrls(w http.ResponseWriter, _ *http.Request) {
 	w.Write(js)
 }
 
-func (config VendorConfig) firstMediaLinkHandler(w http.ResponseWriter, _ *http.Request) {
-	fmt.Fprintf(w, config.Server.Options.FirstMediaURL)
-}
-
-func (config VendorConfig) secondMediaLinkHandler(w http.ResponseWriter, _ *http.Request) {
-	fmt.Fprintf(w, config.Server.Options.SecondMediaURL)
-}
-
 func (config VendorConfig) RunServer() {
 
 	http.HandleFunc("/mediastatus", config.mediaStatusHandler)
 	http.HandleFunc("/mediaurls", config.mediaUrls)
-	http.HandleFunc("/firstmedialink", config.firstMediaLinkHandler)
-	http.HandleFunc("/secondmedialink", config.secondMediaLinkHandler)
 	portAddress := fmt.Sprintf(":%s", config.Server.Port)
 
 	// server for API endpoints that the workflow can utilize

@@ -82,6 +82,8 @@ github.com/uber/jaeger-client-go v2.23.1+incompatible h1:uArBYHQR0HqLFFAypI7RsWT
 github.com/uber/jaeger-client-go v2.23.1+incompatible/go.mod h1:WVhlPFC8FDjOFMMWRy2pZqQJSXxYSwNYOkTr/Z6d3Kk=
 github.com/uber/jaeger-lib v2.2.0+incompatible h1:MxZXOiR2JuoANZ3J6DE/U0kSFv/eJ/GfSYVCjK7dyaw=
 github.com/uber/jaeger-lib v2.2.0+incompatible/go.mod h1:ComeNDZlWwrWnDv8aPp0Ba6+uUTzImX/AauajbLI56U=
+github.com/xfrr/goffmpeg v0.0.0-20200825100927-5550d238df5c h1:ydcAlElffxxmOn982VmNsx56UM2Op2OetAPura00Bec=
+github.com/xfrr/goffmpeg v0.0.0-20200825100927-5550d238df5c/go.mod h1:fVs4qpwtgjOHD31cTmdHppcr/6vD8QHrAVAu2jTSVFI=
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 go.temporal.io/api v1.4.0 h1:Ga1Ih8YE5ULs+UGt7u6Ppcf5SUMLyh4BATAs6SyPO0w=
 go.temporal.io/api v1.4.0/go.mod h1:H0yXehwGE9Sn9zVruyy9aumq17SMsK1WmIy4GX3MIKw=
