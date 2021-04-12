@@ -3,6 +3,8 @@ package iot_workflow
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -33,7 +35,7 @@ func CheckMediaStatusActivity(ctx context.Context) (bool, error) {
 	if status == "success" {
 		return true, nil
 	}
-	return false, nil
+	return false, errors.New("media not ready to download")
 }
 
 // GetMediaURLsActivity ...
@@ -65,9 +67,9 @@ func DownloadFileActivity(ctx context.Context, fileURL string) (string, error) {
 	logger := activity.GetLogger(ctx)
 	logger.Info("Downloading file...", "fileURL", fileURL)
 
-	tmpFile, err := ioutil.TempFile("dir", "videoFile")
+	tmpFile, err := ioutil.TempFile("", "videoFile")
 	if err != nil {
-		logger.Error("Err creating temp file")
+		logger.Error(fmt.Sprintf("Err creating temp file %s", err.Error()))
 		return "", err
 	}
 
@@ -79,6 +81,8 @@ func DownloadFileActivity(ctx context.Context, fileURL string) (string, error) {
 		return "", err
 	}
 	defer file.Close()
+
+	logger.Info(fmt.Sprintf("created file with name %s", file.Name()))
 
 	resp, err := http.Get(fileURL)
 	if err != nil {

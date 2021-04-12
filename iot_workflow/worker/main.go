@@ -18,11 +18,17 @@ func main() {
 	}
 	defer c.Close()
 
-	w := worker.New(c, "iotprocessing", worker.Options{})
+	// these worker options are necessary for the worker to participate in a session
+	// see https://docs.temporal.io/docs/go-sessions/ for more details
+	workerOptions := worker.Options{
+		EnableSessionWorker: true,
+	}
+	w := worker.New(c, "iotprocessing", workerOptions)
 
 	w.RegisterWorkflow(iot_workflow.IOTWorkflow)
 	w.RegisterActivity(iot_workflow.CheckMediaStatusActivity)
 	w.RegisterActivity(iot_workflow.GetMediaURLsActivity)
+	w.RegisterActivity(iot_workflow.DownloadFileActivity)	
 
 	err = w.Run(worker.InterruptCh())
 	if err != nil {

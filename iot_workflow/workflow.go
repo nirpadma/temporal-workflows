@@ -1,7 +1,7 @@
 package iot_workflow
 
 import (
-	"errors"
+	"fmt"
 	"time"
 
 	"go.temporal.io/sdk/temporal"
@@ -57,10 +57,8 @@ func processIOTWorkflow(ctx workflow.Context) (err error) {
 		logger.Error("CheckMediaStatusActivity failed", "Error", err)
 		return err
 	}
-	if !isMediaReadyToDownload {
-		return errors.New("Media not ready to download")
-	}
-	logger.Info("isMediaReadyToDownload", "isReady", isMediaReadyToDownload)
+
+	logger.Info("Media is ready to download", "isReady", isMediaReadyToDownload)
 
 	var mediaURLs []string
 	err = workflow.ExecuteActivity(ctx1, GetMediaURLsActivity).Get(ctx1, &mediaURLs)
@@ -71,26 +69,30 @@ func processIOTWorkflow(ctx workflow.Context) (err error) {
 
 	logger.Info("mediaURLs: ", "mediaURLs", mediaURLs)
 
-	// so := &workflow.SessionOptions{
-	// 	CreationTimeout:  time.Minute,
-	// 	ExecutionTimeout: time.Minute,
-	// }
+	so := &workflow.SessionOptions{
+		CreationTimeout:  3 * time.Minute,
+		ExecutionTimeout: 3 * time.Minute,
+		HeartbeatTimeout: 3 * time.Minute,
+	}
+	// Use the session context for the activities to schedule on the same host
+	sessionCtx, err := workflow.CreateSession(ctx, so)
+	if err != nil {
+		return err
+	}
+	defer workflow.CompleteSession(sessionCtx)
 
-	// // Use the session context for the activities we wish to schedule on the same host
-	// sessionCtx, err := workflow.CreateSession(ctx, so)
-	// if err != nil {
-	// 	return err
-	// }
-	// defer workflow.CompleteSession(sessionCtx)
-
-	// downloadedfileNames := make([]string, len(mediaURLs))
-
-	// for i, mediaFileURL := range mediaURLs {
-	// 	err = workflow.ExecuteActivity(sessionCtx, DownloadFileActivity, mediaFileURL).Get(sessionCtx, &downloadedfileNames[i])
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// }
+	downloadedfileNames := []string{}
+	for i, mediaFileURL := range mediaURLs {
+		logger.Info(fmt.Sprintf("i=%d", i))
+		logger.Info("downloading file", "mediaFileURL", mediaFileURL)
+		var downloadedFileName string
+		err = workflow.ExecuteActivity(sessionCtx, DownloadFileActivity, mediaFileURL).Get(sessionCtx, &downloadedFileName)
+		if err != nil {
+			return err
+		}
+		logger.Info(fmt.Sprintf("Downloaded the following file: %s", downloadedFileName))
+		downloadedfileNames = append(downloadedfileNames, downloadedFileName)
+	}
 
 	// var encodedFilePath string
 	// err = workflow.ExecuteActivity(sessionCtx, EncodeFileActivity, downloadedName).Get(sessionCtx, &encodedFilePath)
