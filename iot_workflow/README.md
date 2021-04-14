@@ -14,9 +14,14 @@ The `vendor_api` simulates an external API that indicates status. We include a `
 the fraction of time the API returns success or failure. 
 
 
+## Prerequisites 
+1. Ensure that you have the temporal service running as specified in the quick start of
+the [temporal docs](https://docs.temporal.io/docs/server-quick-install/).
+
+2. For this example, we'll need to have ffmpeg installed. See instructions in the [official website](https://ffmpeg.org/download.html). 
+
+
 ## How to run the workflow
-**Prerequisites** Ensure that you have the temporal service running as specified in the quick start of
-the temporal docs: https://docs.temporal.io/docs/server-quick-install/
 
 1. Start the vendor api by going to the `vendor_api` directory and starting the server:
 ```
