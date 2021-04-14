@@ -1,22 +1,33 @@
 **Status:** In development 
 
 ## IOT Workflow
-The Internet Of Things (IOT) workflow shows an end to end workflow demonstration 
+The Internet Of Things (IOT) workflow shows an end to end workflow demonstration.
 
 
 ## Code Organization
+For this example, we have 3 main parts to start to get the example working: 
+- a simulated, simple vendor API in the `vendor_api` directory
+- the worker that hosts our workflow and activities in the `worker` directory
+- the starter program (located in the `starter` directory) is a convenience file to trigger our workflow.
+
+The `vendor_api` simulates an external API that indicates status. We include a `media_success_ratio` to simulate 
+the fraction of time the API returns success or failure. 
 
 
 ## How to run the workflow
+**Prerequisites** Ensure that you have the temporal service running as specified in the quick start of
+the temporal docs: https://docs.temporal.io/docs/server-quick-install/
+
 1. Start the vendor api by going to the `vendor_api` directory and starting the server:
 ```
 go run *.go
 ```
 
-2. Start the worker by going to the `worker` directory and boostrapping the worker:
+2. Start the worker by going to the `worker` directory and starting the worker:
 ```
 go run *.go
 ```
+Note: It's possible to instatiate multiple workers by repeatedly running the command above.
 
 3. Trigger the workflow by going to the `starter` directory and running the following command:
 ```
