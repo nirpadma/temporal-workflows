@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"github.com/nirpadma/temporal-workflows/iot_workflow"
+	"github.com/nirpadma/temporal-workflows/media_processing_workflow"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
 )
@@ -23,14 +23,14 @@ func main() {
 	workerOptions := worker.Options{
 		EnableSessionWorker: true,
 	}
-	w := worker.New(c, "iotprocessing", workerOptions)
+	w := worker.New(c, "mediaprocessing", workerOptions)
 
-	w.RegisterWorkflow(iot_workflow.IOTWorkflow)
-	w.RegisterActivity(iot_workflow.CheckMediaStatusActivity)
-	w.RegisterActivity(iot_workflow.GetMediaURLsActivity)
-	w.RegisterActivity(iot_workflow.DownloadFilesActivity)
-	w.RegisterActivity(iot_workflow.EncodeFileActivity)
-	w.RegisterActivity(iot_workflow.MergeFilesActivity)
+	w.RegisterWorkflow(media_processing_workflow.MediaProcessingWorkflow)
+	w.RegisterActivity(media_processing_workflow.CheckMediaStatusActivity)
+	w.RegisterActivity(media_processing_workflow.GetMediaURLsActivity)
+	w.RegisterActivity(media_processing_workflow.DownloadFilesActivity)
+	w.RegisterActivity(media_processing_workflow.EncodeFileActivity)
+	w.RegisterActivity(media_processing_workflow.MergeFilesActivity)
 
 	err = w.Run(worker.InterruptCh())
 	if err != nil {

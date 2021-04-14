@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/nirpadma/temporal-workflows/iot_workflow"
+	"github.com/nirpadma/temporal-workflows/media_processing_workflow"
 	"github.com/pborman/uuid"
 	"go.temporal.io/sdk/client"
 )
@@ -22,12 +22,12 @@ func main() {
 
 	fileID := uuid.New()
 	workflowOptions := client.StartWorkflowOptions{
-		ID:        "iotprocessing_" + fileID,
-		TaskQueue: "iotprocessing",
+		ID:        "mediaprocessing_" + fileID,
+		TaskQueue: "mediaprocessing",
 	}
 	outputFileName := fmt.Sprintf("mergedFile_%s.mp4", fileID)
 
-	we, err := c.ExecuteWorkflow(context.Background(), workflowOptions, iot_workflow.IOTWorkflow, outputFileName)
+	we, err := c.ExecuteWorkflow(context.Background(), workflowOptions, media_processing_workflow.MediaProcessingWorkflow, outputFileName)
 	if err != nil {
 		log.Fatalln("Unable to execute workflow", err)
 	}

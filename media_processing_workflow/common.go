@@ -1,4 +1,4 @@
-package iot_workflow
+package media_processing_workflow
 
 const (
 	Success = "success"

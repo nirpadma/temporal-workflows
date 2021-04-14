@@ -1,4 +1,4 @@
-package iot_workflow
+package media_processing_workflow
 
 import (
 	"context"
@@ -87,7 +87,7 @@ func DownloadFilesActivity(ctx context.Context, fileURLs []string) ([]string, er
 		}
 		defer file.Close()
 
-			logger.Info(fmt.Sprintf("created file with name %s", file.Name()))
+		logger.Info(fmt.Sprintf("created file with name %s", file.Name()))
 
 		// For potentially long running activites, record a heartbeat
 		activity.RecordHeartbeat(ctx, "")
@@ -195,7 +195,7 @@ func MergeFilesActivity(ctx context.Context, fileNames []string, outputFileName 
 	}
 
 	//Use ffmpeg concatenate instructions from here: https://trac.ffmpeg.org/wiki/Concatenate
-	
+
 	ffMpegCommand := "ffmpeg"
 	arg0 := "-f"
 	arg1 := "concat"

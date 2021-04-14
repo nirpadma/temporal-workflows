@@ -1,4 +1,4 @@
-package iot_workflow
+package media_processing_workflow
 
 import (
 	"fmt"
@@ -10,15 +10,16 @@ import (
 
 const workflowMaxAttempts = 3
 
-// IOTWorkflow workflow definition
-// NOTE: The initial structure for this workflow was taken from https://github.com/temporalio/samples-go
-func IOTWorkflow(ctx workflow.Context, outputFileName string) (err error) {
+// MediaProcessingWorkflow defines a workflow that queries an API, downloads media files, encodes, and combines media.
+// NOTE: The initial structure for this workflow came from https://github.com/temporalio/samples-go
+func MediaProcessingWorkflow(ctx workflow.Context, outputFileName string) (err error) {
 	ao := workflow.ActivityOptions{
 		StartToCloseTimeout: 3 * time.Minute,
 		HeartbeatTimeout:    3 * time.Minute,
 		RetryPolicy: &temporal.RetryPolicy{
 			InitialInterval: time.Second,
-			// retry every second. In real-world settings, it may be more apropriate to set an actual value
+			// retry with a constant backoff coefficient (i.e constant time between retry intervals)
+			// In real-world settings, it may be more apropriate to set a value > 1 
 			BackoffCoefficient: 1.0,
 			MaximumInterval:    time.Minute,
 		},
