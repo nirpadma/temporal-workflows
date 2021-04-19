@@ -33,7 +33,7 @@ func (s *UnitTestSuite) Test_MediaProcessingWorkflow_NotObtainable() {
 }
 
 
-// Test the `success` status but without proceeding with the subsequent activities
+// Test the `success` status and downstream activities
 func (s *UnitTestSuite) Test_MediaProcessingWorkflow_Error() {
 	env := s.NewTestWorkflowEnvironment()
 	env.SetWorkerOptions(worker.Options{

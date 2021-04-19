@@ -11,7 +11,7 @@ import (
 const workflowMaxAttempts = 3
 
 // MediaProcessingWorkflow defines a workflow that queries an API, downloads media files, encodes, and combines media.
-// NOTE: The initial structure for this workflow came from https://github.com/temporalio/samples-go
+// NOTE: The initial structure for this workflow was inspired by https://github.com/temporalio/samples-go
 func MediaProcessingWorkflow(ctx workflow.Context, outputFileName string) (err error) {
 	ao := workflow.ActivityOptions{
 		StartToCloseTimeout: 3 * time.Minute,

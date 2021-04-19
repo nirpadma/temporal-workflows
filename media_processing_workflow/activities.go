@@ -35,16 +35,15 @@ func CheckMediaStatusActivity(ctx context.Context) (string, error) {
 	}
 	status := string(bodyBytes)
 	switch status {
-		case "success" :
-			return "success", nil
-		case "pending" :
-			return "pending", errors.New("media still pending")
-		case "not_obtainable" :
-			return "not_obtainable", nil
+		case Success :
+			return Success, nil
+		case Pending :
+			return Pending, errors.New("media still pending")
+		case NotObtainable :
+			return NotObtainable, nil
 		default:
-			return "not_obtainable", nil
+			return NotObtainable, nil
 	}
-	
 }
 
 // GetMediaURLsActivity ...
@@ -56,8 +55,6 @@ func GetMediaURLsActivity(ctx context.Context) ([]string, error) {
 		return []string{}, err
 	}
 	defer resp.Body.Close()
-
-	// logger.Info("bodyBytes: ", "resp.Body", resp.Body)
 
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -105,8 +102,6 @@ func DownloadFilesActivity(ctx context.Context, fileURLs []string) ([]string, er
 			return downloadedFiles, err
 		}
 		defer resp.Body.Close()
-
-		logger.Info(fmt.Sprintf("http.Get(fileURL) %s", file.Name()))
 
 		_, err = io.Copy(file, resp.Body)
 		if err != nil {
