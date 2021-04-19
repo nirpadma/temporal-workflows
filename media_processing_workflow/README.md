@@ -1,7 +1,5 @@
-**Status:** In development 
-
-## IOT Workflow
-The Internet Of Things (IOT) workflow shows an end to end workflow demonstration.
+## Media Process Workflow
+The Media Processing workflow shows an end-to-end workflow demonstration of downloading, encoding, and combining video files.
 
 
 ## Code Organization
