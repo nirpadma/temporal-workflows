@@ -18,7 +18,7 @@ import (
 const vendorAPImediaStatus = "http://localhost:8220/mediastatus"
 const vendorAPImediaURLs = "http://localhost:8220/mediaurls"
 
-// CheckMediaStatusActivity ...
+// CheckMediaStatusActivity checks vendor API to determine whether the media is ready to be downloaded  
 func CheckMediaStatusActivity(ctx context.Context) (string, error) {
 	logger := activity.GetLogger(ctx)
 	resp, err := http.Get(vendorAPImediaStatus)
@@ -46,7 +46,7 @@ func CheckMediaStatusActivity(ctx context.Context) (string, error) {
 	}
 }
 
-// GetMediaURLsActivity ...
+// GetMediaURLsActivity obtains the media URLs to be downloaded from the vendor
 func GetMediaURLsActivity(ctx context.Context) ([]string, error) {
 	logger := activity.GetLogger(ctx)
 	resp, err := http.Get(vendorAPImediaURLs)
@@ -67,8 +67,9 @@ func GetMediaURLsActivity(ctx context.Context) ([]string, error) {
 	return urls.Links, nil
 }
 
-// Create a temporary files and download the media files at the provided fileURL into the temp files
-// return an array containing paths to the temp files.
+// DownloadFilesActivity creates temporary files and download the media files at the provided fileURLs into the temp files
+// and return an array containing paths to the temp files.
+// As a side effect, the activity records heartbeats of the activity execution to the Temporal service
 func DownloadFilesActivity(ctx context.Context, fileURLs []string) ([]string, error) {
 	logger := activity.GetLogger(ctx)
 	downloadedFiles := []string{}
@@ -187,16 +188,25 @@ func createTempFile(prefix string) (string, error) {
 	return tmpFile.Name(), nil
 }
 
+func deleteTempFile(fileName string) error {
+	err := os.Remove(fileName)
+	if err != nil {
+		return errors.New("unable to delete file")
+	}
+	return nil
+}
+
 // MergeFilesActivity combines the media files into one file based on the ordering in the input array
 func MergeFilesActivity(ctx context.Context, fileNames []string, outputFileName string) (string, error) {
 	logger := activity.GetLogger(ctx)
-	filesToMerge, err := createTempFile("filesToMerge")
-	err = writefileNamesToFile(filesToMerge, fileNames)
+
+	// Use ffmpeg to concatenate instructions from here: https://trac.ffmpeg.org/wiki/Concatenate
+	// The recommended approach utilizes a file that includes a list of files to merge.
+	fileContaingFilesToMerge, err := createTempFile("filesToMerge")
+	err = writefileNamesToFile(fileContaingFilesToMerge, fileNames)
 	if err != nil {
 		return "", err
 	}
-
-	//Use ffmpeg concatenate instructions from here: https://trac.ffmpeg.org/wiki/Concatenate
 
 	ffMpegCommand := "ffmpeg"
 	arg0 := "-f"
@@ -204,7 +214,7 @@ func MergeFilesActivity(ctx context.Context, fileNames []string, outputFileName 
 	arg2 := "-safe"
 	arg3 := "0"
 	arg4 := "-i"
-	arg5 := filesToMerge
+	arg5 := fileContaingFilesToMerge
 	arg6 := "-c"
 	arg7 := "copy"
 	arg8 := outputFileName
@@ -217,5 +227,11 @@ func MergeFilesActivity(ctx context.Context, fileNames []string, outputFileName 
 		return "", err
 	}
 	logger.Info(string(stdout))
+	
+	err = deleteTempFile(fileContaingFilesToMerge)
+	if err != nil {
+		logger.Error(fmt.Sprintf("unable to delete file %s", fileContaingFilesToMerge))
+	}
+	
 	return outputFileName, nil
 }
