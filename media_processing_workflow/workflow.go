@@ -26,8 +26,8 @@ func MediaProcessingWorkflow(ctx workflow.Context, outputFileName string) (err e
 	}
 	ctx = workflow.WithActivityOptions(ctx, ao)
 
-	for i := 1; i < workflowMaxAttempts; i++ {
-		err = processIOTWorkflow(ctx, outputFileName)
+	for i := 1; i <= workflowMaxAttempts; i++ {
+		err = processMediaWorkflow(ctx, outputFileName)
 		if err == nil {
 			break
 		}
@@ -40,7 +40,7 @@ func MediaProcessingWorkflow(ctx workflow.Context, outputFileName string) (err e
 	return err
 }
 
-func processIOTWorkflow(ctx workflow.Context, outputFileName string) (err error) {
+func processMediaWorkflow(ctx workflow.Context, outputFileName string) (err error) {
 
 	ao := workflow.ActivityOptions{
 		ScheduleToStartTimeout: time.Minute,
@@ -50,12 +50,17 @@ func processIOTWorkflow(ctx workflow.Context, outputFileName string) (err error)
 	ctx1 := workflow.WithActivityOptions(ctx, ao)
 	logger := workflow.GetLogger(ctx)
 
-	logger.Info("starting CheckMediaStatusActivity")
-
-	err = workflow.ExecuteActivity(ctx1, CheckMediaStatusActivity).Get(ctx1, nil)
+	var status string
+	err = workflow.ExecuteActivity(ctx1, CheckMediaStatusActivity).Get(ctx1, &status)
 	if err != nil {
 		logger.Error("CheckMediaStatusActivity failed", "Error", err)
 		return err
+	}
+
+	if status == NotObtainable {
+		logger.Info("Media not obtainable; finishing workflow")
+		// any clean-up activities would go here.
+		return nil
 	}
 
 	var mediaURLs []string
@@ -65,12 +70,13 @@ func processIOTWorkflow(ctx workflow.Context, outputFileName string) (err error)
 		return err
 	}
 
+	// Create and use the session API for the activities that need to be scheduled on the same host
 	so := &workflow.SessionOptions{
 		CreationTimeout:  time.Minute,
 		ExecutionTimeout: 8 * time.Minute,
 		HeartbeatTimeout: 5 * time.Minute,
 	}
-	// Use the session context for the activities to schedule on the same host
+	
 	sessionCtx, err := workflow.CreateSession(ctx, so)
 	if err != nil {
 		return err

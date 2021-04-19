@@ -19,25 +19,32 @@ const vendorAPImediaStatus = "http://localhost:8220/mediastatus"
 const vendorAPImediaURLs = "http://localhost:8220/mediaurls"
 
 // CheckMediaStatusActivity ...
-func CheckMediaStatusActivity(ctx context.Context) (bool, error) {
+func CheckMediaStatusActivity(ctx context.Context) (string, error) {
 	logger := activity.GetLogger(ctx)
 	resp, err := http.Get(vendorAPImediaStatus)
 	if err != nil {
 		logger.Error("http err calling vendor API for status", "endpoint", vendorAPImediaStatus)
-		return false, err
+		return "", err
 	}
 	defer resp.Body.Close()
 
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		logger.Error("ioutil err reading mediastatus response", "endpoint", vendorAPImediaStatus)
-		return false, err
+		return "", err
 	}
 	status := string(bodyBytes)
-	if status == "success" {
-		return true, nil
+	switch status {
+		case "success" :
+			return "success", nil
+		case "pending" :
+			return "pending", errors.New("media still pending")
+		case "not_obtainable" :
+			return "not_obtainable", nil
+		default:
+			return "not_obtainable", nil
 	}
-	return false, errors.New("media not ready to download")
+	
 }
 
 // GetMediaURLsActivity ...

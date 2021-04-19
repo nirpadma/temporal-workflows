@@ -8,17 +8,9 @@ import (
 	rand "math/rand"
 	"net/http"
 	"os"
-)
 
-const (
-	Success = "success"
-	Pending = "pending"
+	"github.com/nirpadma/temporal-workflows/media_processing_workflow"
 )
-
-// MediaURLs is the struct for the json response of /mediaurls endpoint
-type MediaURLs struct {
-	Links []string `json:"urls"`
-}
 
 // ValidateConfigPath ..
 func ValidateConfigPath(configPath string) error {
@@ -49,15 +41,21 @@ func parseFlags() (string, error) {
 func (config VendorConfig) mediaStatusHandler(w http.ResponseWriter, _ *http.Request) {
 	successRatioThreshold := config.Server.Options.MediaStatusSuccessRatio
 	if rand.Float64() <= successRatioThreshold {
-		fmt.Fprintf(w, Success)
+		fmt.Fprintf(w, media_processing_workflow.Success)
 	} else {
-		fmt.Fprintf(w, Pending)
+		// return either `non_obtainable` or `pending` with equal probability
+		if rand.Float64() <= 0.5 {
+			fmt.Fprintf(w, media_processing_workflow.NotObtainable)
+		} else {
+			fmt.Fprintf(w, media_processing_workflow.Pending)
+		}
+
 	}
 }
 
 func (config VendorConfig) mediaUrls(w http.ResponseWriter, _ *http.Request) {
 
-	mediaURLs := MediaURLs{config.Server.Options.MediaURLs}
+	mediaURLs := media_processing_workflow.MediaURLs{Links: config.Server.Options.MediaURLs}
 	js, err := json.Marshal(mediaURLs)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
