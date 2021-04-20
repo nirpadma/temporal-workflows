@@ -13,19 +13,7 @@ const workflowMaxAttempts = 3
 // MediaProcessingWorkflow defines a workflow that queries an API, downloads media files, encodes, and combines media.
 // NOTE: The initial structure for this workflow was inspired by https://github.com/temporalio/samples-go
 func MediaProcessingWorkflow(ctx workflow.Context, outputFileName string) (err error) {
-	ao := workflow.ActivityOptions{
-		StartToCloseTimeout: 3 * time.Minute,
-		HeartbeatTimeout:    3 * time.Minute,
-		RetryPolicy: &temporal.RetryPolicy{
-			InitialInterval: time.Second,
-			// retry with a constant backoff coefficient (i.e constant time between retry intervals)
-			// In real-world settings, it may be more apropriate to set a value > 1 
-			BackoffCoefficient: 1.0,
-			MaximumInterval:    time.Minute,
-		},
-	}
-	ctx = workflow.WithActivityOptions(ctx, ao)
-
+	
 	for i := 1; i <= workflowMaxAttempts; i++ {
 		err = processMediaWorkflow(ctx, outputFileName)
 		if err == nil {
@@ -43,11 +31,18 @@ func MediaProcessingWorkflow(ctx workflow.Context, outputFileName string) (err e
 func processMediaWorkflow(ctx workflow.Context, outputFileName string) (err error) {
 
 	ao := workflow.ActivityOptions{
-		ScheduleToStartTimeout: time.Minute,
-		StartToCloseTimeout:    3 * time.Minute,
-		HeartbeatTimeout:       3 * time.Minute,
+		StartToCloseTimeout: 3 * time.Minute,
+		HeartbeatTimeout:    3 * time.Minute,
+		RetryPolicy: &temporal.RetryPolicy{
+			InitialInterval: time.Second,
+			// retry with a constant backoff coefficient (i.e constant time between retry intervals)
+			// In real-world settings, it may be more apropriate to set a value > 1 
+			BackoffCoefficient: 1.0,
+			MaximumInterval:    time.Minute,
+		},
 	}
 	ctx1 := workflow.WithActivityOptions(ctx, ao)
+	
 	logger := workflow.GetLogger(ctx)
 
 	var status string
