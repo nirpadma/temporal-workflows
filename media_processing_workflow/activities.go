@@ -15,22 +15,33 @@ import (
 	"go.temporal.io/sdk/activity"
 )
 
-const vendorAPImediaStatus = "http://localhost:8220/mediastatus"
-const vendorAPImediaURLs = "http://localhost:8220/mediaurls"
+
+type Activities struct {
+	VendorAPIMediaStatus string
+	VendorAPIMediaURLs string
+	Transcoder *transcoder.Transcoder
+	OutputFileType string
+}
+
+/**
+NOTE: Use these activities only as a general guide. For production settings, there may be modifications to be made.
+For instance, in the encoding activity, we use a simple ffmpeg wrapper to do the encoding. In production settings, 
+there may need to be additional configurations, modifications, or settings that are necessary.
+**/
 
 // CheckMediaStatusActivity checks vendor API to determine whether the media is ready to be downloaded  
-func CheckMediaStatusActivity(ctx context.Context) (string, error) {
+func (a *Activities) CheckMediaStatusActivity(ctx context.Context) (string, error) {
 	logger := activity.GetLogger(ctx)
-	resp, err := http.Get(vendorAPImediaStatus)
+	resp, err := http.Get(a.VendorAPIMediaStatus)
 	if err != nil {
-		logger.Error("http err calling vendor API for status", "endpoint", vendorAPImediaStatus)
+		logger.Error("http err calling vendor API for status", "endpoint", a.VendorAPIMediaStatus)
 		return "", err
 	}
 	defer resp.Body.Close()
 
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		logger.Error("ioutil err reading mediastatus response", "endpoint", vendorAPImediaStatus)
+		logger.Error("ioutil err reading mediastatus response", "endpoint", a.VendorAPIMediaStatus)
 		return "", err
 	}
 	status := string(bodyBytes)
@@ -47,18 +58,18 @@ func CheckMediaStatusActivity(ctx context.Context) (string, error) {
 }
 
 // GetMediaURLsActivity obtains the media URLs to be downloaded from the vendor
-func GetMediaURLsActivity(ctx context.Context) ([]string, error) {
+func (a *Activities) GetMediaURLsActivity(ctx context.Context) ([]string, error) {
 	logger := activity.GetLogger(ctx)
-	resp, err := http.Get(vendorAPImediaURLs)
+	resp, err := http.Get(a.VendorAPIMediaURLs)
 	if err != nil {
-		logger.Error("http err calling vendor API for status", "endpoint", vendorAPImediaStatus)
+		logger.Error("http err calling vendor API for status", "endpoint", a.VendorAPIMediaURLs)
 		return []string{}, err
 	}
 	defer resp.Body.Close()
 
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		logger.Error("ioutil err reading mediastatus response", "endpoint", vendorAPImediaStatus)
+		logger.Error("ioutil err reading mediastatus response", "endpoint", a.VendorAPIMediaURLs)
 		return []string{}, err
 	}
 	var urls MediaURLs
@@ -70,7 +81,7 @@ func GetMediaURLsActivity(ctx context.Context) ([]string, error) {
 // DownloadFilesActivity creates temporary files and download the media files at the provided fileURLs into the temp files
 // and return an array containing paths to the temp files.
 // As a side effect, the activity records heartbeats of the activity execution to the Temporal service
-func DownloadFilesActivity(ctx context.Context, fileURLs []string) ([]string, error) {
+func (a *Activities) DownloadFilesActivity(ctx context.Context, fileURLs []string) ([]string, error) {
 	logger := activity.GetLogger(ctx)
 	downloadedFiles := []string{}
 	for _, fileURL := range fileURLs {
@@ -119,26 +130,28 @@ func DownloadFilesActivity(ctx context.Context, fileURLs []string) ([]string, er
 }
 
 // EncodeFileActivity encodes the downloaded file into the expected output
-func EncodeFileActivity(ctx context.Context, fileName string) (string, error) {
+// **NOTE:** In production settings, we'd want to update up this function to better 
+// handle specifics of the media encoding. This is a simple activity to illustrate 
+// an end-to-end example using Temporal.
+func (a *Activities) EncodeFileActivity(ctx context.Context, fileName string) (string, error) {
 	logger := activity.GetLogger(ctx)
 	tmpFile, err := ioutil.TempFile("", "encodedFile")
 	if err != nil {
 		logger.Error(fmt.Sprintf("Err creating temp file %s", err.Error()))
 		return "", err
 	}
-	outputFilePath := fmt.Sprintf("%s.mp4", tmpFile.Name())
+	outputFilePath := fmt.Sprintf("%s.%s", tmpFile.Name(), a.OutputFileType)
 
-	transcoder := new(transcoder.Transcoder)
-	err = transcoder.Initialize(fileName, outputFilePath)
+	err = a.Transcoder.Initialize(fileName, outputFilePath)
 
 	if err != nil {
 		logger.Error(fmt.Sprintf("Err initializing ffmpeg transcoder %s", err.Error()))
 		return "", err
 	}
 	// Start transcoder with the `true` flag to show the progress
-	done := transcoder.Run(true)
+	done := a.Transcoder.Run(true)
 
-	progress := transcoder.Output()
+	progress := a.Transcoder.Output()
 
 	// print out transcoding progress
 	for msg := range progress {
@@ -197,7 +210,7 @@ func deleteTempFile(fileName string) error {
 }
 
 // MergeFilesActivity combines the media files into one file based on the ordering in the input array
-func MergeFilesActivity(ctx context.Context, fileNames []string, outputFileName string) (string, error) {
+func (a *Activities) MergeFilesActivity(ctx context.Context, fileNames []string, outputFileName string) (string, error) {
 	logger := activity.GetLogger(ctx)
 
 	// Use ffmpeg to concatenate instructions from here: https://trac.ffmpeg.org/wiki/Concatenate

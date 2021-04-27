@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/nirpadma/temporal-workflows/media_processing_workflow"
+	"github.com/xfrr/goffmpeg/transcoder"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
 )
@@ -25,12 +26,17 @@ func main() {
 	}
 	w := worker.New(c, "mediaprocessing", workerOptions)
 
+	transcoder := new(transcoder.Transcoder)
+	activity := media_processing_workflow.Activities{
+		VendorAPIMediaStatus: media_processing_workflow.VendorAPIMediaStatus,
+		VendorAPIMediaURLs: media_processing_workflow.VendorAPIMediaURLs,
+		Transcoder: transcoder, 
+		OutputFileType: media_processing_workflow.EncodedOutputFileType,
+	}
+
 	w.RegisterWorkflow(media_processing_workflow.MediaProcessingWorkflow)
-	w.RegisterActivity(media_processing_workflow.CheckMediaStatusActivity)
-	w.RegisterActivity(media_processing_workflow.GetMediaURLsActivity)
-	w.RegisterActivity(media_processing_workflow.DownloadFilesActivity)
-	w.RegisterActivity(media_processing_workflow.EncodeFileActivity)
-	w.RegisterActivity(media_processing_workflow.MergeFilesActivity)
+	w.RegisterActivity(&activity)
+
 
 	err = w.Run(worker.InterruptCh())
 	if err != nil {
