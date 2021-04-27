@@ -29,14 +29,13 @@ func main() {
 	transcoder := new(transcoder.Transcoder)
 	activity := media_processing_workflow.Activities{
 		VendorAPIMediaStatus: media_processing_workflow.VendorAPIMediaStatus,
-		VendorAPIMediaURLs: media_processing_workflow.VendorAPIMediaURLs,
-		Transcoder: transcoder, 
-		OutputFileType: media_processing_workflow.EncodedOutputFileType,
+		VendorAPIMediaURLs:   media_processing_workflow.VendorAPIMediaURLs,
+		Transcoder:           transcoder,
+		OutputFileType:       media_processing_workflow.EncodedOutputFileType,
 	}
 
 	w.RegisterWorkflow(media_processing_workflow.MediaProcessingWorkflow)
 	w.RegisterActivity(&activity)
-
 
 	err = w.Run(worker.InterruptCh())
 	if err != nil {

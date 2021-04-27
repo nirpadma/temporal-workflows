@@ -15,21 +15,20 @@ import (
 	"go.temporal.io/sdk/activity"
 )
 
-
 type Activities struct {
 	VendorAPIMediaStatus string
-	VendorAPIMediaURLs string
-	Transcoder *transcoder.Transcoder
-	OutputFileType string
+	VendorAPIMediaURLs   string
+	Transcoder           *transcoder.Transcoder
+	OutputFileType       string
 }
 
 /**
 NOTE: Use these activities only as a general guide. For production settings, there may be modifications to be made.
-For instance, in the encoding activity, we use a simple ffmpeg wrapper to do the encoding. In production settings, 
+For instance, in the encoding activity, we use a simple ffmpeg wrapper to do the encoding. In production settings,
 there may need to be additional configurations, modifications, or settings that are necessary.
 **/
 
-// CheckMediaStatusActivity checks vendor API to determine whether the media is ready to be downloaded  
+// CheckMediaStatusActivity checks vendor API to determine whether the media is ready to be downloaded
 func (a *Activities) CheckMediaStatusActivity(ctx context.Context) (string, error) {
 	logger := activity.GetLogger(ctx)
 	resp, err := http.Get(a.VendorAPIMediaStatus)
@@ -46,14 +45,14 @@ func (a *Activities) CheckMediaStatusActivity(ctx context.Context) (string, erro
 	}
 	status := string(bodyBytes)
 	switch status {
-		case Success :
-			return Success, nil
-		case Pending :
-			return Pending, errors.New("media still pending")
-		case NotObtainable :
-			return NotObtainable, nil
-		default:
-			return NotObtainable, nil
+	case Success:
+		return Success, nil
+	case Pending:
+		return Pending, errors.New("media still pending")
+	case NotObtainable:
+		return NotObtainable, nil
+	default:
+		return NotObtainable, nil
 	}
 }
 
@@ -130,8 +129,8 @@ func (a *Activities) DownloadFilesActivity(ctx context.Context, fileURLs []strin
 }
 
 // EncodeFileActivity encodes the downloaded file into the expected output
-// **NOTE:** In production settings, we'd want to update up this function to better 
-// handle specifics of the media encoding. This is a simple activity to illustrate 
+// **NOTE:** In production settings, we'd want to update up this function to better
+// handle specifics of the media encoding. This is a simple activity to illustrate
 // an end-to-end example using Temporal.
 func (a *Activities) EncodeFileActivity(ctx context.Context, fileName string) (string, error) {
 	logger := activity.GetLogger(ctx)
@@ -240,11 +239,11 @@ func (a *Activities) MergeFilesActivity(ctx context.Context, fileNames []string,
 		return "", err
 	}
 	logger.Info(string(stdout))
-	
+
 	err = deleteTempFile(fileContaingFilesToMerge)
 	if err != nil {
 		logger.Error(fmt.Sprintf("unable to delete file %s", fileContaingFilesToMerge))
 	}
-	
+
 	return outputFileName, nil
 }

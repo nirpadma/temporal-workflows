@@ -19,7 +19,6 @@ func TestUnitTestSuite(t *testing.T) {
 	suite.Run(t, new(UnitTestSuite))
 }
 
-
 // Test the `not_obtainable` status
 func (s *UnitTestSuite) Test_MediaProcessingWorkflow_NotObtainable() {
 	env := s.NewTestWorkflowEnvironment()
@@ -28,11 +27,10 @@ func (s *UnitTestSuite) Test_MediaProcessingWorkflow_NotObtainable() {
 	fileID := uuid.New()
 	outputfileName := "mediaprocessing_" + fileID
 	env.ExecuteWorkflow(MediaProcessingWorkflow, outputfileName)
-	
+
 	s.True(env.IsWorkflowCompleted())
 	s.NoError(env.GetWorkflowError())
 }
-
 
 // Test the `success` status and downstream activities
 func (s *UnitTestSuite) Test_MediaProcessingWorkflow_NoError() {
