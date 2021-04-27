@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/xfrr/goffmpeg/transcoder"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
@@ -13,7 +14,22 @@ const workflowMaxAttempts = 3
 // MediaProcessingWorkflow defines a workflow that queries an API, downloads media files, encodes, and combines media.
 // NOTE: The initial structure for this workflow was inspired by https://github.com/temporalio/samples-go
 func MediaProcessingWorkflow(ctx workflow.Context, outputFileName string) (err error) {
-	
+
+	ao := workflow.ActivityOptions{
+		ScheduleToCloseTimeout: 10 * time.Minute,
+		ScheduleToStartTimeout: 1 * time.Minute,
+		StartToCloseTimeout:    4 * time.Minute,
+		HeartbeatTimeout:       2 * time.Minute,
+		RetryPolicy: &temporal.RetryPolicy{
+			InitialInterval: time.Second,
+			// retry with a constant backoff coefficient (i.e constant time between retry intervals)
+			// In real-world settings, it may be more apropriate to set a value > 1
+			BackoffCoefficient: 1.0,
+			MaximumInterval:    time.Minute,
+		},
+	}
+	ctx = workflow.WithActivityOptions(ctx, ao)
+
 	for i := 1; i <= workflowMaxAttempts; i++ {
 		err = processMediaWorkflow(ctx, outputFileName)
 		if err == nil {
@@ -30,28 +46,23 @@ func MediaProcessingWorkflow(ctx workflow.Context, outputFileName string) (err e
 
 func processMediaWorkflow(ctx workflow.Context, outputFileName string) (err error) {
 
-	ao := workflow.ActivityOptions{
-		StartToCloseTimeout: 3 * time.Minute,
-		HeartbeatTimeout:    3 * time.Minute,
-		RetryPolicy: &temporal.RetryPolicy{
-			InitialInterval: time.Second,
-			// retry with a constant backoff coefficient (i.e constant time between retry intervals)
-			// In real-world settings, it may be more apropriate to set a value > 1 
-			BackoffCoefficient: 1.0,
-			MaximumInterval:    time.Minute,
-		},
-	}
-	ctx1 := workflow.WithActivityOptions(ctx, ao)
-	
 	logger := workflow.GetLogger(ctx)
 
+	transcoder := new(transcoder.Transcoder)
+	a := Activities{
+		VendorAPIMediaStatus: VendorAPIMediaStatus,
+		VendorAPIMediaURLs:   VendorAPIMediaURLs,
+		Transcoder:           transcoder,
+		OutputFileType:       EncodedOutputFileType,
+	}
 	var status string
-	err = workflow.ExecuteActivity(ctx1, CheckMediaStatusActivity).Get(ctx1, &status)
+	err = workflow.ExecuteActivity(ctx, a.CheckMediaStatusActivity).Get(ctx, &status)
 	if err != nil {
 		logger.Error("CheckMediaStatusActivity failed", "Error", err)
 		return err
 	}
 
+	// End the workflow early if the media is never obtainable
 	if status == NotObtainable {
 		logger.Info("Media not obtainable; finishing workflow")
 		// any clean-up activities would go here.
@@ -59,7 +70,7 @@ func processMediaWorkflow(ctx workflow.Context, outputFileName string) (err erro
 	}
 
 	var mediaURLs []string
-	err = workflow.ExecuteActivity(ctx1, GetMediaURLsActivity).Get(ctx1, &mediaURLs)
+	err = workflow.ExecuteActivity(ctx, a.GetMediaURLsActivity).Get(ctx, &mediaURLs)
 	if err != nil {
 		logger.Error("GetMediaURLsActivity failed", "Error", err)
 		return err
@@ -71,7 +82,7 @@ func processMediaWorkflow(ctx workflow.Context, outputFileName string) (err erro
 		ExecutionTimeout: 8 * time.Minute,
 		HeartbeatTimeout: 5 * time.Minute,
 	}
-	
+
 	sessionCtx, err := workflow.CreateSession(ctx, so)
 	if err != nil {
 		return err
@@ -79,7 +90,7 @@ func processMediaWorkflow(ctx workflow.Context, outputFileName string) (err erro
 	defer workflow.CompleteSession(sessionCtx)
 
 	downloadedfileNames := []string{}
-	err = workflow.ExecuteActivity(sessionCtx, DownloadFilesActivity, mediaURLs).Get(sessionCtx, &downloadedfileNames)
+	err = workflow.ExecuteActivity(sessionCtx, a.DownloadFilesActivity, mediaURLs).Get(sessionCtx, &downloadedfileNames)
 	if err != nil {
 		return err
 	}
@@ -88,7 +99,7 @@ func processMediaWorkflow(ctx workflow.Context, outputFileName string) (err erro
 	for _, downloadedFile := range downloadedfileNames {
 		logger.Info("encoding file", "file", downloadedFile)
 		var encodedFileName string
-		err = workflow.ExecuteActivity(sessionCtx, EncodeFileActivity, downloadedFile).Get(sessionCtx, &encodedFileName)
+		err = workflow.ExecuteActivity(sessionCtx, a.EncodeFileActivity, downloadedFile).Get(sessionCtx, &encodedFileName)
 		if err != nil {
 			return err
 		}
@@ -97,7 +108,7 @@ func processMediaWorkflow(ctx workflow.Context, outputFileName string) (err erro
 	}
 
 	var mergedFile string
-	err = workflow.ExecuteActivity(sessionCtx, MergeFilesActivity, encodedfileNames, outputFileName).Get(sessionCtx, &mergedFile)
+	err = workflow.ExecuteActivity(sessionCtx, a.MergeFilesActivity, encodedfileNames, outputFileName).Get(sessionCtx, &mergedFile)
 	if err != nil {
 		return err
 	}
