@@ -3,4 +3,4 @@ server:
   port: 8220
   options:
     media_success_ratio: 0.5
-    media_urls: ["https://upload.wikimedia.org/wikipedia/commons/8/80/Husa_drone_flight.webm", "https://upload.wikimedia.org/wikipedia/commons/8/80/Husa_drone_flight.webm"]
+    media_urls: ["https://upload.wikimedia.org/wikipedia/commons/1/1d/Stanley_Hong_Kong_Drone_2020.webm", "https://upload.wikimedia.org/wikipedia/commons/8/80/Husa_drone_flight.webm"]
