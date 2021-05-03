@@ -4,25 +4,22 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/xfrr/goffmpeg/transcoder"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
 
-const workflowMaxAttempts = 3
+const sessionMaxAttempts = 3
 
 // MediaProcessingWorkflow defines a workflow that queries an API, downloads media files, encodes, and combines media.
 // NOTE: The initial structure for this workflow was inspired by https://github.com/temporalio/samples-go
 func MediaProcessingWorkflow(ctx workflow.Context, outputFileName string) (err error) {
 
 	ao := workflow.ActivityOptions{
-		ScheduleToCloseTimeout: 10 * time.Minute,
-		ScheduleToStartTimeout: 1 * time.Minute,
-		StartToCloseTimeout:    4 * time.Minute,
-		HeartbeatTimeout:       2 * time.Minute,
+		StartToCloseTimeout:    10 * time.Minute,
 		RetryPolicy: &temporal.RetryPolicy{
 			InitialInterval: time.Second,
-			// retry with a constant backoff coefficient (i.e constant time between retry intervals)
+			// For this example, we are setting a BackoffCoefficient of 1.0 (instead of the default 2.0) 
+			// to keep the same duration time between the Activity retries
 			// In real-world settings, it may be more apropriate to set a value > 1
 			BackoffCoefficient: 1.0,
 			MaximumInterval:    time.Minute,
@@ -30,31 +27,14 @@ func MediaProcessingWorkflow(ctx workflow.Context, outputFileName string) (err e
 	}
 	ctx = workflow.WithActivityOptions(ctx, ao)
 
-	for i := 1; i <= workflowMaxAttempts; i++ {
-		err = processMediaWorkflow(ctx, outputFileName)
-		if err == nil {
-			break
-		}
-	}
-	if err != nil {
-		workflow.GetLogger(ctx).Error("Workflow failed.", "Error", err.Error())
-	} else {
-		workflow.GetLogger(ctx).Info("Workflow completed.")
-	}
-	return err
+	return processMediaWorkflow(ctx, outputFileName)
 }
 
 func processMediaWorkflow(ctx workflow.Context, outputFileName string) (err error) {
 
 	logger := workflow.GetLogger(ctx)
 
-	transcoder := new(transcoder.Transcoder)
-	a := Activities{
-		VendorAPIMediaStatus: VendorAPIMediaStatus,
-		VendorAPIMediaURLs:   VendorAPIMediaURLs,
-		Transcoder:           transcoder,
-		OutputFileType:       EncodedOutputFileType,
-	}
+	var a *Activities
 	var status string
 	err = workflow.ExecuteActivity(ctx, a.CheckMediaStatusActivity).Get(ctx, &status)
 	if err != nil {
@@ -76,11 +56,29 @@ func processMediaWorkflow(ctx workflow.Context, outputFileName string) (err erro
 		return err
 	}
 
+	for i := 1; i <= sessionMaxAttempts; i++ {
+		err = processMediaFiles(ctx, mediaURLs, outputFileName)
+		if err == nil {
+			break
+		}
+		logger.Error("processMediaFiles errored. Retrying...")
+	}
+
+	if err != nil {
+		logger.Error("Processing Media in Session Failed.", "Error", err.Error())
+	} else {
+		logger.Info("Processing Media in Session Succeeded.")
+	}
+	return err
+}
+
+func processMediaFiles(ctx workflow.Context, mediaFilesOfInterest []string, outputFileName string) (err error) {
+	logger := workflow.GetLogger(ctx)
+
 	// Create and use the session API for the activities that need to be scheduled on the same host
 	so := &workflow.SessionOptions{
 		CreationTimeout:  time.Minute,
 		ExecutionTimeout: 8 * time.Minute,
-		HeartbeatTimeout: 5 * time.Minute,
 	}
 
 	sessionCtx, err := workflow.CreateSession(ctx, so)
@@ -89,8 +87,11 @@ func processMediaWorkflow(ctx workflow.Context, outputFileName string) (err erro
 	}
 	defer workflow.CompleteSession(sessionCtx)
 
+
+	var a *Activities
+
 	downloadedfileNames := []string{}
-	err = workflow.ExecuteActivity(sessionCtx, a.DownloadFilesActivity, mediaURLs).Get(sessionCtx, &downloadedfileNames)
+	err = workflow.ExecuteActivity(sessionCtx, a.DownloadFilesActivity, mediaFilesOfInterest).Get(sessionCtx, &downloadedfileNames)
 	if err != nil {
 		return err
 	}
@@ -109,6 +110,12 @@ func processMediaWorkflow(ctx workflow.Context, outputFileName string) (err erro
 
 	var mergedFile string
 	err = workflow.ExecuteActivity(sessionCtx, a.MergeFilesActivity, encodedfileNames, outputFileName).Get(sessionCtx, &mergedFile)
+	if err != nil {
+		return err
+	}
+
+	var uploadSuccess bool
+	err = workflow.ExecuteActivity(sessionCtx, a.UploadFileActivity, mergedFile).Get(sessionCtx, &uploadSuccess)
 	if err != nil {
 		return err
 	}

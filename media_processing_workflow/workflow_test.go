@@ -52,6 +52,8 @@ func (s *UnitTestSuite) Test_MediaProcessingWorkflow_NoError() {
 	env.OnActivity(a.EncodeFileActivity, mock.Anything, "download1").Return("encode1", nil)
 	env.OnActivity(a.EncodeFileActivity, mock.Anything, "download2").Return("encode2", nil)
 	env.OnActivity(a.MergeFilesActivity, mock.Anything, []string{"encode1", "encode2"}, mock.Anything).Return("output.mp4", nil)
+	env.OnActivity(a.UploadFileActivity, mock.Anything, "output.mp4", mock.Anything).Return(true, nil)
+
 
 	fileID := uuid.New()
 	outputfileName := "mediaprocessing_" + fileID

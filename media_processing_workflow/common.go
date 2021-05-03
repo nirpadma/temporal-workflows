@@ -12,6 +12,10 @@ const (
 
 	// encoding output type
 	EncodedOutputFileType = "mp4"
+
+	// upload file name attribute
+	FileNameAttribute = "uploadfile"
+	FileUploadEndpoint = "http://localhost:9220/uploadmedia"
 )
 
 // MediaURLs is the struct for the json response of /mediaurls endpoint

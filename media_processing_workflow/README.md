@@ -26,13 +26,20 @@ the [temporal docs](https://docs.temporal.io/docs/server-quick-install/).
 go run *.go
 ```
 
-2. Start the worker by going to the `worker` directory and starting the worker:
+1. Start the internal api by going to the `internal_api` directory and starting the internal server:
+```
+go run *.go
+```
+The uploaded files will be stored within the `uploadedfiles` directory in the `internal_api` directory.
+
+
+3. Start the worker by going to the `worker` directory and starting the worker:
 ```
 go run *.go
 ```
 Note: It's possible to instatiate multiple workers by repeatedly running the command above.
 
-3. Trigger the workflow by going to the `starter` directory and running the following command:
+4. Trigger the workflow by going to the `starter` directory and running the following command:
 ```
 go run *.go
 ``` 

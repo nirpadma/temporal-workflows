@@ -1,12 +1,14 @@
 package media_processing_workflow
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"os/exec"
@@ -20,6 +22,7 @@ type Activities struct {
 	VendorAPIMediaURLs   string
 	Transcoder           *transcoder.Transcoder
 	OutputFileType       string
+	FileUploadEndpoint   string
 }
 
 /**
@@ -246,4 +249,54 @@ func (a *Activities) MergeFilesActivity(ctx context.Context, fileNames []string,
 	}
 
 	return outputFileName, nil
+}
+
+// UploadFileActivity uploads the provided file to the internal API
+func (a *Activities) UploadFileActivity(ctx context.Context, fileName string) (bool, error) {
+	targetUrl := a.FileUploadEndpoint
+
+	buffer := &bytes.Buffer{}
+	bodyWriter := multipart.NewWriter(buffer)
+
+	fileWriter, err := bodyWriter.CreateFormFile(FileNameAttribute, fileName)
+	if err != nil {
+		fmt.Println("error creating form file")
+		return false, err
+	}
+
+	fh, err := os.Open(fileName)
+	if err != nil {
+		fmt.Println("error while opening file")
+		return false, err
+	}
+	defer fh.Close()
+
+	_, err = io.Copy(fileWriter, fh)
+	if err != nil {
+		return false, err
+	}
+
+	formDataContentType := bodyWriter.FormDataContentType()
+	bodyWriter.Close()
+
+	resp, err := http.Post(targetUrl, formDataContentType, buffer)
+	if err != nil {
+		return false, err
+	}
+	defer resp.Body.Close()
+
+	respBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return false, err
+	}
+
+	fmt.Println(resp.Status)
+	fmt.Println(fmt.Sprintf("Response body: %s", string(respBody)))
+
+	// Delete File as a side effect; Ideally, move this into its own Activity. 
+	if resp.StatusCode == int(http.StatusOK) {
+		deleteTempFile(fileName)
+	}
+
+	return true, nil
 }

@@ -32,6 +32,7 @@ func main() {
 		VendorAPIMediaURLs:   media_processing_workflow.VendorAPIMediaURLs,
 		Transcoder:           transcoder,
 		OutputFileType:       media_processing_workflow.EncodedOutputFileType,
+		FileUploadEndpoint:   media_processing_workflow.FileUploadEndpoint,
 	}
 
 	w.RegisterWorkflow(media_processing_workflow.MediaProcessingWorkflow)
