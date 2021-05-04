@@ -15,7 +15,7 @@ const sessionMaxAttempts = 3
 func MediaProcessingWorkflow(ctx workflow.Context, outputFileName string) (err error) {
 
 	ao := workflow.ActivityOptions{
-		StartToCloseTimeout:    10 * time.Minute,
+		StartToCloseTimeout:    2 * time.Minute,
 		RetryPolicy: &temporal.RetryPolicy{
 			InitialInterval: time.Second,
 			// For this example, we are setting a BackoffCoefficient of 1.0 (instead of the default 2.0) 
@@ -23,6 +23,7 @@ func MediaProcessingWorkflow(ctx workflow.Context, outputFileName string) (err e
 			// In real-world settings, it may be more apropriate to set a value > 1
 			BackoffCoefficient: 1.0,
 			MaximumInterval:    time.Minute,
+			//NonRetryableErrorTypes: []string{workflow.ErrSessionFailed.Error()},
 		},
 	}
 	ctx = workflow.WithActivityOptions(ctx, ao)
@@ -60,7 +61,7 @@ func processMediaWorkflow(ctx workflow.Context, outputFileName string) (err erro
 		err = processMediaFiles(ctx, mediaURLs, outputFileName)
 		if err == nil {
 			break
-		}
+		} 
 		logger.Error("processMediaFiles errored. Retrying...")
 	}
 
@@ -73,12 +74,10 @@ func processMediaWorkflow(ctx workflow.Context, outputFileName string) (err erro
 }
 
 func processMediaFiles(ctx workflow.Context, mediaFilesOfInterest []string, outputFileName string) (err error) {
-	logger := workflow.GetLogger(ctx)
-
 	// Create and use the session API for the activities that need to be scheduled on the same host
 	so := &workflow.SessionOptions{
 		CreationTimeout:  time.Minute,
-		ExecutionTimeout: 8 * time.Minute,
+		ExecutionTimeout: 1 * time.Minute,
 	}
 
 	sessionCtx, err := workflow.CreateSession(ctx, so)
@@ -87,6 +86,7 @@ func processMediaFiles(ctx workflow.Context, mediaFilesOfInterest []string, outp
 	}
 	defer workflow.CompleteSession(sessionCtx)
 
+	logger := workflow.GetLogger(sessionCtx)
 
 	var a *Activities
 
