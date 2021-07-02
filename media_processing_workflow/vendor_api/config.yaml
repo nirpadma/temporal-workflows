@@ -3,4 +3,4 @@ server:
   port: 8220
   options:
     media_success_ratio: 0.5
-    media_urls: ["https://www.pexels.com/video/1739010/download/", "https://www.pexels.com/video/3703474/download/"]
+    media_urls: ["https://www.pexels.com/video/1739010/download/", "https://www.pexels.com/video/1739010/download/"]

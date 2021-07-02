@@ -107,9 +107,6 @@ func (a *Activities) DownloadFilesActivity(ctx context.Context, fileURLs []strin
 
 		logger.Info(fmt.Sprintf("created file with name %s", file.Name()))
 
-		// For potentially long running activites, record a heartbeat
-		activity.RecordHeartbeat(ctx, "")
-
 		resp, err := http.Get(fileURL)
 		if err != nil {
 			logger.Error("http error downloading file", "fileURL", fileURL)
@@ -122,8 +119,6 @@ func (a *Activities) DownloadFilesActivity(ctx context.Context, fileURLs []strin
 			logger.Error("Error copying downloaded file to filepath")
 			return downloadedFiles, err
 		}
-		// For potentially long running activites, record a heartbeat
-		activity.RecordHeartbeat(ctx, "")
 
 		logger.Info(fmt.Sprintf("saved file with name %s", file.Name()))
 		downloadedFiles = append(downloadedFiles, file.Name())
@@ -157,8 +152,6 @@ func (a *Activities) EncodeFileActivity(ctx context.Context, fileName string) (s
 
 	// print out transcoding progress
 	for msg := range progress {
-		// For potentially long running activites, record a heartbeat
-		activity.RecordHeartbeat(ctx, "")
 		fmt.Println(msg)
 	}
 
