@@ -23,7 +23,7 @@ func TestUnitTestSuite(t *testing.T) {
 func (s *UnitTestSuite) Test_MediaProcessingWorkflow_NotObtainable() {
 	env := s.NewTestWorkflowEnvironment()
 	var a *Activities
-	env.OnActivity(a.CheckMediaStatusActivity, mock.Anything).Return(NotObtainable, nil)
+	env.OnActivity(a.CheckMediaStatusActivity, mock.Anything, mock.Anything).Return(NotObtainable, nil)
 	fileID := uuid.New()
 	outputfileName := "mediaprocessing_" + fileID
 	env.ExecuteWorkflow(MediaProcessingWorkflow, outputfileName)
@@ -46,7 +46,7 @@ func (s *UnitTestSuite) Test_MediaProcessingWorkflow_NoError() {
 	env.RegisterActivity(a.EncodeFileActivity)
 	env.RegisterActivity(a.MergeFilesActivity)
 
-	env.OnActivity(a.CheckMediaStatusActivity, mock.Anything).Return(Success, nil)
+	env.OnActivity(a.CheckMediaStatusActivity, mock.Anything, mock.Anything).Return(Success, nil)
 	env.OnActivity(a.GetMediaURLsActivity, mock.Anything).Return([]string{"url1", "url2"}, nil)
 	env.OnActivity(a.DownloadFilesActivity, mock.Anything, []string{"url1", "url2"}).Return([]string{"download1", "download2"}, nil)
 	env.OnActivity(a.EncodeFileActivity, mock.Anything, "download1").Return("encode1", nil)

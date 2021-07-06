@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/gorilla/mux"
 	"github.com/nirpadma/temporal-workflows/media_processing_workflow"
 )
 
@@ -38,24 +39,45 @@ func parseFlags() (string, error) {
 	return configPath, nil
 }
 
-func (config VendorConfig) mediaStatusHandler(w http.ResponseWriter, _ *http.Request) {
+func (config VendorConfig) mediaStatusHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("mediaStatusHandler request obtained.")
+	vars := mux.Vars(r)
+	deviceId, ok := vars["deviceId"]
+	if !ok {
+		fmt.Println("deviceId is missing in parameters")
+	}
+	var status string
+
 	successRatioThreshold := config.Server.Options.MediaStatusSuccessRatio
 	if rand.Float64() <= successRatioThreshold {
-		fmt.Fprintf(w, media_processing_workflow.Success)
+		status = media_processing_workflow.Success
 	} else {
 		// return either `non_obtainable` or `pending` with equal probability
 		if rand.Float64() <= 0.5 {
-			fmt.Fprintf(w, media_processing_workflow.NotObtainable)
+			status = media_processing_workflow.NotObtainable
 		} else {
-			fmt.Fprintf(w, media_processing_workflow.Pending)
+			status = media_processing_workflow.Pending
 		}
-
 	}
+	mediaStatus := media_processing_workflow.MediaStatus{DeviceId: deviceId, Status: status}
+	fmt.Println(fmt.Sprintf("%+v", mediaStatus))
+	js, err := json.Marshal(mediaStatus)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(js)
 }
 
-func (config VendorConfig) mediaUrls(w http.ResponseWriter, _ *http.Request) {
+func (config VendorConfig) mediaUrls(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	deviceId, ok := vars["deviceId"]
+	if !ok {
+		fmt.Println("deviceId is missing in parameters")
+	}
 
-	mediaURLs := media_processing_workflow.MediaURLs{Links: config.Server.Options.MediaURLs}
+	mediaURLs := media_processing_workflow.MediaURLs{DeviceId: deviceId, Links: config.Server.Options.MediaURLs}
 	js, err := json.Marshal(mediaURLs)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -67,14 +89,14 @@ func (config VendorConfig) mediaUrls(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (config VendorConfig) RunServer() {
-
-	http.HandleFunc("/mediastatus", config.mediaStatusHandler)
-	http.HandleFunc("/mediaurls", config.mediaUrls)
+	r := mux.NewRouter()
+	r.HandleFunc("/mediastatus/{deviceId}", config.mediaStatusHandler)
+	r.HandleFunc("/mediaurls/{deviceId}", config.mediaUrls)
 	portAddress := fmt.Sprintf(":%s", config.Server.Port)
 
 	// server for API endpoints that the workflow can utilize
 	fmt.Println("Starting simulated vendor server...")
-	_ = http.ListenAndServe(portAddress, nil)
+	_ = http.ListenAndServe(portAddress, r)
 }
 
 func main() {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 
@@ -27,7 +28,9 @@ func main() {
 	}
 	outputFileName := fmt.Sprintf("mergedFile_%s.mp4", fileID)
 
-	we, err := c.ExecuteWorkflow(context.Background(), workflowOptions, media_processing_workflow.MediaProcessingWorkflow, outputFileName)
+	deviceIdPtr := flag.String("deviceId", "deviceId", "a device id")
+
+	we, err := c.ExecuteWorkflow(context.Background(), workflowOptions, media_processing_workflow.MediaProcessingWorkflow, *deviceIdPtr, outputFileName)
 	if err != nil {
 		log.Fatalln("Unable to execute workflow", err)
 	}

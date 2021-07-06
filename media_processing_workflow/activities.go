@@ -18,11 +18,11 @@ import (
 )
 
 type Activities struct {
-	VendorAPIMediaStatus string
-	VendorAPIMediaURLs   string
-	Transcoder           *transcoder.Transcoder
-	OutputFileType       string
-	FileUploadEndpoint   string
+	VendorAPIMediaStatusTemplate string
+	VendorAPIMediaURLsTemplate   string
+	Transcoder                   *transcoder.Transcoder
+	OutputFileType               string
+	FileUploadEndpoint           string
 }
 
 /**
@@ -32,21 +32,28 @@ there may need to be additional configurations, modifications, or settings that 
 **/
 
 // CheckMediaStatusActivity checks vendor API to determine whether the media is ready to be downloaded
-func (a *Activities) CheckMediaStatusActivity(ctx context.Context) (string, error) {
+func (a *Activities) CheckMediaStatusActivity(ctx context.Context, deviceID string) (string, error) {
 	logger := activity.GetLogger(ctx)
-	resp, err := http.Get(a.VendorAPIMediaStatus)
+	logger.Info("deviceID: = " + deviceID)
+	VendorAPIMediaStatusPath := fmt.Sprintf(a.VendorAPIMediaStatusTemplate, deviceID)
+	logger.Info("VendorAPIMediaStatusPath: = " + VendorAPIMediaStatusPath)
+	resp, err := http.Get(VendorAPIMediaStatusPath)
 	if err != nil {
-		logger.Error("http err calling vendor API for status", "endpoint", a.VendorAPIMediaStatus)
+		logger.Error("http err calling vendor API for status", "endpoint", VendorAPIMediaStatusPath)
 		return "", err
 	}
 	defer resp.Body.Close()
 
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		logger.Error("ioutil err reading mediastatus response", "endpoint", a.VendorAPIMediaStatus)
+		logger.Error("ioutil err reading mediastatus response", "endpoint", VendorAPIMediaStatusPath)
 		return "", err
 	}
-	status := string(bodyBytes)
+	var mediaStatus MediaStatus
+	json.Unmarshal(bodyBytes, &mediaStatus)
+	logger.Info(fmt.Sprintf("%+v", mediaStatus))
+
+	status := string(mediaStatus.Status)
 	switch status {
 	case Success:
 		return Success, nil
@@ -60,18 +67,19 @@ func (a *Activities) CheckMediaStatusActivity(ctx context.Context) (string, erro
 }
 
 // GetMediaURLsActivity obtains the media URLs to be downloaded from the vendor
-func (a *Activities) GetMediaURLsActivity(ctx context.Context) ([]string, error) {
+func (a *Activities) GetMediaURLsActivity(ctx context.Context, deviceID string) ([]string, error) {
 	logger := activity.GetLogger(ctx)
-	resp, err := http.Get(a.VendorAPIMediaURLs)
+	VendorAPIMediaURLsPath := fmt.Sprintf(a.VendorAPIMediaURLsTemplate, deviceID)
+	resp, err := http.Get(VendorAPIMediaURLsPath)
 	if err != nil {
-		logger.Error("http err calling vendor API for status", "endpoint", a.VendorAPIMediaURLs)
+		logger.Error("http err calling vendor API for status", "endpoint", VendorAPIMediaURLsPath)
 		return []string{}, err
 	}
 	defer resp.Body.Close()
 
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		logger.Error("ioutil err reading mediastatus response", "endpoint", a.VendorAPIMediaURLs)
+		logger.Error("ioutil err reading mediastatus response", "endpoint", VendorAPIMediaURLsPath)
 		return []string{}, err
 	}
 	var urls MediaURLs
@@ -286,7 +294,7 @@ func (a *Activities) UploadFileActivity(ctx context.Context, fileName string) (b
 	fmt.Println(resp.Status)
 	fmt.Println(fmt.Sprintf("Response body: %s", string(respBody)))
 
-	// Delete File as a side effect; Ideally, move this into its own Activity. 
+	// Delete File as a side effect; Ideally, move this into its own Activity.
 	if resp.StatusCode == int(http.StatusOK) {
 		deleteTempFile(fileName)
 	}
