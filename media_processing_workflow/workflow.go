@@ -12,11 +12,12 @@ const sessionMaxAttempts = 3
 
 var uniformRetryPolicy = &temporal.RetryPolicy{
 	InitialInterval: time.Second,
-	BackoffCoefficient: 1.0,
+	BackoffCoefficient: 1,
 }
 
 var exponentialRetryPolicy = &temporal.RetryPolicy{
 	InitialInterval: time.Second,
+	BackoffCoefficient: 2.0,
 }
 
 // MediaProcessingWorkflow defines a workflow that queries an API, downloads media files, encodes, and combines media.
