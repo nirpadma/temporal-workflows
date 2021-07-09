@@ -60,7 +60,6 @@ func (config VendorConfig) mediaStatusHandler(w http.ResponseWriter, r *http.Req
 		}
 	}
 	mediaStatus := media_processing_workflow.MediaStatus{DeviceId: deviceId, Status: status}
-	fmt.Println(fmt.Sprintf("%+v", mediaStatus))
 	js, err := json.Marshal(mediaStatus)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

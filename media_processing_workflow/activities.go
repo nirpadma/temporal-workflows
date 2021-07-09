@@ -34,9 +34,7 @@ there may need to be additional configurations, modifications, or settings that 
 // CheckMediaStatusActivity checks vendor API to determine whether the media is ready to be downloaded
 func (a *Activities) CheckMediaStatusActivity(ctx context.Context, deviceID string) (string, error) {
 	logger := activity.GetLogger(ctx)
-	logger.Info("deviceID: = " + deviceID)
 	VendorAPIMediaStatusPath := fmt.Sprintf(a.VendorAPIMediaStatusTemplate, deviceID)
-	logger.Info("VendorAPIMediaStatusPath: = " + VendorAPIMediaStatusPath)
 	resp, err := http.Get(VendorAPIMediaStatusPath)
 	if err != nil {
 		logger.Error("http err calling vendor API for status", "endpoint", VendorAPIMediaStatusPath)
@@ -50,8 +48,11 @@ func (a *Activities) CheckMediaStatusActivity(ctx context.Context, deviceID stri
 		return "", err
 	}
 	var mediaStatus MediaStatus
-	json.Unmarshal(bodyBytes, &mediaStatus)
-	logger.Info(fmt.Sprintf("%+v", mediaStatus))
+	err = json.Unmarshal(bodyBytes, &mediaStatus)
+	if err != nil {
+		logger.Error("error unmarshalling mediaStatus from API response")
+		return "", err
+	}
 
 	status := string(mediaStatus.Status)
 	switch status {
