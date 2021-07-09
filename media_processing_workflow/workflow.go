@@ -12,7 +12,7 @@ const sessionMaxAttempts = 3
 
 // MediaProcessingWorkflow defines a workflow that queries an API, downloads media files, encodes, and combines media.
 // NOTE: The initial structure for this workflow was inspired by https://github.com/temporalio/samples-go
-func MediaProcessingWorkflow(ctx workflow.Context, outputFileName string) (err error) {
+func MediaProcessingWorkflow(ctx workflow.Context, deviceId string, outputFileName string) (err error) {
 
 	ao := workflow.ActivityOptions{
 		StartToCloseTimeout:    5 * time.Minute,
@@ -27,16 +27,16 @@ func MediaProcessingWorkflow(ctx workflow.Context, outputFileName string) (err e
 	}
 	ctx = workflow.WithActivityOptions(ctx, ao)
 
-	return processMediaWorkflow(ctx, outputFileName)
+	return processMediaWorkflow(ctx, deviceId, outputFileName)
 }
 
-func processMediaWorkflow(ctx workflow.Context, outputFileName string) (err error) {
+func processMediaWorkflow(ctx workflow.Context, deviceId string, outputFileName string) (err error) {
 
 	logger := workflow.GetLogger(ctx)
 
 	var a *Activities
 	var status string
-	err = workflow.ExecuteActivity(ctx, a.CheckMediaStatusActivity).Get(ctx, &status)
+	err = workflow.ExecuteActivity(ctx, a.CheckMediaStatusActivity, deviceId).Get(ctx, &status)
 	if err != nil {
 		logger.Error("CheckMediaStatusActivity failed", "Error", err)
 		return err
@@ -50,7 +50,7 @@ func processMediaWorkflow(ctx workflow.Context, outputFileName string) (err erro
 	}
 
 	var mediaURLs []string
-	err = workflow.ExecuteActivity(ctx, a.GetMediaURLsActivity).Get(ctx, &mediaURLs)
+	err = workflow.ExecuteActivity(ctx, a.GetMediaURLsActivity, deviceId).Get(ctx, &mediaURLs)
 	if err != nil {
 		logger.Error("GetMediaURLsActivity failed", "Error", err)
 		return err

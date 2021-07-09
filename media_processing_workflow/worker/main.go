@@ -28,11 +28,11 @@ func main() {
 
 	transcoder := new(transcoder.Transcoder)
 	activity := media_processing_workflow.Activities{
-		VendorAPIMediaStatus: media_processing_workflow.VendorAPIMediaStatus,
-		VendorAPIMediaURLs:   media_processing_workflow.VendorAPIMediaURLs,
-		Transcoder:           transcoder,
-		OutputFileType:       media_processing_workflow.EncodedOutputFileType,
-		FileUploadEndpoint:   media_processing_workflow.FileUploadEndpoint,
+		VendorAPIMediaStatusTemplate: media_processing_workflow.VendorAPIMediaStatusTemplate,
+		VendorAPIMediaURLsTemplate:   media_processing_workflow.VendorAPIMediaURLsTemplate,
+		Transcoder:                   transcoder,
+		OutputFileType:               media_processing_workflow.EncodedOutputFileType,
+		FileUploadEndpoint:           media_processing_workflow.FileUploadEndpoint,
 	}
 
 	w.RegisterWorkflow(media_processing_workflow.MediaProcessingWorkflow)
