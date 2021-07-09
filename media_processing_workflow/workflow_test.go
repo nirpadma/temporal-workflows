@@ -26,7 +26,7 @@ func (s *UnitTestSuite) Test_MediaProcessingWorkflow_NotObtainable() {
 	env.OnActivity(a.CheckMediaStatusActivity, mock.Anything, mock.Anything).Return(NotObtainable, nil)
 	fileID := uuid.New()
 	outputfileName := "mediaprocessing_" + fileID
-	env.ExecuteWorkflow(MediaProcessingWorkflow, outputfileName, "deviceId")
+	env.ExecuteWorkflow(MediaProcessingWorkflow, "deviceId", outputfileName)
 
 	s.True(env.IsWorkflowCompleted())
 	s.NoError(env.GetWorkflowError())
@@ -56,7 +56,7 @@ func (s *UnitTestSuite) Test_MediaProcessingWorkflow_NoError() {
 
 	fileID := uuid.New()
 	outputfileName := "mediaprocessing_" + fileID
-	env.ExecuteWorkflow(MediaProcessingWorkflow, outputfileName, "deviceId")
+	env.ExecuteWorkflow(MediaProcessingWorkflow, "deviceId", outputfileName)
 
 	s.True(env.IsWorkflowCompleted())
 	s.NoError(env.GetWorkflowError())

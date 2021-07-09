@@ -10,29 +10,26 @@ import (
 
 const sessionMaxAttempts = 3
 
+var uniformRetryPolicy = &temporal.RetryPolicy{
+	InitialInterval: time.Second,
+	BackoffCoefficient: 1.0,
+}
+
+var exponentialRetryPolicy = &temporal.RetryPolicy{
+	InitialInterval: time.Second,
+}
+
 // MediaProcessingWorkflow defines a workflow that queries an API, downloads media files, encodes, and combines media.
 // NOTE: The initial structure for this workflow was inspired by https://github.com/temporalio/samples-go
 func MediaProcessingWorkflow(ctx workflow.Context, deviceId string, outputFileName string) (err error) {
 
-	ao := workflow.ActivityOptions{
-		StartToCloseTimeout:    5 * time.Minute,
-		RetryPolicy: &temporal.RetryPolicy{
-			InitialInterval: time.Second,
-			// For this example, we are setting a BackoffCoefficient of 1.0 (instead of the default 2.0) 
-			// to keep the same duration time between the Activity retries
-			// In real-world settings, it may be more apropriate to set a value > 1
-			BackoffCoefficient: 1.0,
-			MaximumInterval:    time.Minute,
-		},
-	}
-	ctx = workflow.WithActivityOptions(ctx, ao)
-
-	return processMediaWorkflow(ctx, deviceId, outputFileName)
-}
-
-func processMediaWorkflow(ctx workflow.Context, deviceId string, outputFileName string) (err error) {
-
 	logger := workflow.GetLogger(ctx)
+	// use an exponential retry policy for activities where "real world" delays may occur
+	expAO := workflow.ActivityOptions{
+		StartToCloseTimeout:    1 * time.Minute,
+		RetryPolicy: exponentialRetryPolicy,
+	}
+	ctx = workflow.WithActivityOptions(ctx, expAO)
 
 	var a *Activities
 	var status string
@@ -48,6 +45,12 @@ func processMediaWorkflow(ctx workflow.Context, deviceId string, outputFileName 
 		// any clean-up activities would go here.
 		return nil
 	}
+
+	uniformAO := workflow.ActivityOptions{
+		StartToCloseTimeout:    5 * time.Minute,
+		RetryPolicy: uniformRetryPolicy,
+	}
+	ctx = workflow.WithActivityOptions(ctx, uniformAO)
 
 	var mediaURLs []string
 	err = workflow.ExecuteActivity(ctx, a.GetMediaURLsActivity, deviceId).Get(ctx, &mediaURLs)
