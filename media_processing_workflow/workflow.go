@@ -10,16 +10,6 @@ import (
 
 const sessionMaxAttempts = 3
 
-var uniformRetryPolicy = &temporal.RetryPolicy{
-	InitialInterval: time.Second,
-	BackoffCoefficient: 1,
-}
-
-var exponentialRetryPolicy = &temporal.RetryPolicy{
-	InitialInterval: time.Second,
-	BackoffCoefficient: 2.0,
-}
-
 // MediaProcessingWorkflow defines a workflow that queries an API, downloads media files, encodes, and combines media.
 // NOTE: The initial structure for this workflow was inspired by https://github.com/temporalio/samples-go
 func MediaProcessingWorkflow(ctx workflow.Context, deviceId string, outputFileName string) (err error) {
@@ -28,7 +18,10 @@ func MediaProcessingWorkflow(ctx workflow.Context, deviceId string, outputFileNa
 	// use an exponential retry policy for activities where "real world" delays may occur
 	expAO := workflow.ActivityOptions{
 		StartToCloseTimeout:    1 * time.Minute,
-		RetryPolicy: exponentialRetryPolicy,
+		RetryPolicy: &temporal.RetryPolicy{
+			InitialInterval: time.Second,
+			BackoffCoefficient: 2.0,
+		},
 	}
 	ctx = workflow.WithActivityOptions(ctx, expAO)
 
@@ -49,7 +42,10 @@ func MediaProcessingWorkflow(ctx workflow.Context, deviceId string, outputFileNa
 
 	uniformAO := workflow.ActivityOptions{
 		StartToCloseTimeout:    5 * time.Minute,
-		RetryPolicy: uniformRetryPolicy,
+		RetryPolicy: &temporal.RetryPolicy{
+			InitialInterval: time.Second,
+			BackoffCoefficient: 1.0,
+		},
 	}
 	ctx = workflow.WithActivityOptions(ctx, uniformAO)
 
